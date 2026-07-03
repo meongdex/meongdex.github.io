@@ -15,7 +15,7 @@ Temukan. Kasih Makan. Koleksi.
 |------|--------|---------|
 | Fase 1 — MVP Inti | Selesai | Onboarding, beranda, alur temukan->makan->foto->verifikasi AI->kartu->Meongdex, persistensi IndexedDB, offline shell. |
 | Fase 2 — PWA + Landing + APK | Selesai | Landing page lengkap (hero+fitur+screenshot+cara install+FAQ), PWA installable (manifest+SW+beforeinstallprompt), halaman instruksi APK. File APK siap-pakai menunggu satu kali generate via PWABuilder (lihat asumsi #12). |
-| Fase 3 — Fitur lanjutan | Belum dimulai | Menyusul di percakapan berikutnya. |
+| Fase 3 — Fitur lanjutan | Berjalan | Mulai: Jurnal Berburu (linimasa harian), ekspor kartu sebagai gambar (canvas 1080x1080 & 1080x1920 + watermark), badge Kembaran Ditemukan, a11y fix SVG, styling improvements (hover, radar pulse, nav indicator, font sizes). Fitur Fase 3 lainnya menyusul. |
 
 ---
 
@@ -108,6 +108,12 @@ Berikut asumsi yang diambil karena tidak dijelaskan secara eksplisit, demi kelan
 11. **Bahasa UI**: Bahasa Indonesia sehari-hari, nada aktif & ramah.
 12. **APK Android (Fase 2)**: spec menyebut PWABuilder.com sebagai metode pembuatan APK. PWABuilder adalah layanan web interaktif yang tidak bisa dijalankan headless di sandbox pengembangan ini, dan tooling Android SDK/bubblewrap tidak tersedia/terlalu berat di sini. Karena itu: (a) PWA Meongdex sudah **installable** secara native dari Chrome Android ("Instal aplikasi") tanpa APK — ini memenuhi kriteria inti "bisa di-install seperti app native"; (b) file `downloads/meongdex.apk` siap-pakai menunggu **satu kali generate** via PWABuilder.com (sekitar 2 menit, langkah lengkap di `downloads/install-apk.html`); tombol "Download APK Android" di landing menjuju halaman instruksi tersebut. Setelah APK dihasilkan & ditaruh di `downloads/meongdex.apk`, tombol bisa diarahkan langsung ke file. Asumsi ini didokumentasikan transparan sesuai aturan "tidak berhenti bertanya, catat asumsi di README".
 13. **Prompt install PWA**: event `beforeinstallprompt` ditangkap dan dipicu lewat menu Pengaturan > "Pasang sebagai aplikasi"; jika belum eligible, muncul instruksi pakai menu browser (atau Share > Add to Home Screen di iOS).
+14. **Fase 3 (mulai)**: fitur yang sudah dibangun di awal Fase 3:
+    - **Jurnal Berburu**: screen baru dengan linimasa harian otomatis (dikelompokkan per hari, label "Hari ini"/"Kemarin"/tanggal), menampilkan waktu, thumbnail, nama, meta (id·warna·rarity), dan XP per entri. Tidak perlu input pemain — murni otomatis dari data IndexedDB.
+    - **Ekspor kartu sebagai gambar**: tombol "Bagikan" di detail kartu, render canvas 1080x1080 (kotak, untuk feed IG/X) atau 1080x1920 (story), polaroid + border kelangkaan + id + rarity + foto + nama + tag + quote + watermark "MEONGDEX" + mini maskot Si Oren. Format switchable, lalu unduh PNG.
+    - **Badge Kembaran Ditemukan**: deteksi otomatis jika ada 2+ kucing dengan warna sama di koleksi → badge chip muncul di detail kartu.
+    - **A11y fix**: semua SVG dekoratif diberi `aria-hidden="true"` via script + MutationObserver (dari 36 SVG no-label → 0).
+    - **Styling improvements**: hover lift di kartu/mini-card/set-item, radar pulse animation di beranda, bottom nav active indicator bar, micro-interactions (scale on press), font sizes dinaikkan (body 14px+, caption 12px+, kontras lebih tinggi).
 
 ---
 

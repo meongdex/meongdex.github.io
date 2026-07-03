@@ -151,7 +151,7 @@ function el(tag, props={}, children=[]){
 /* ---------------------------------------------------------------------
    4. Navigasi screen
    --------------------------------------------------------------------- */
-const screenOrder = ['onboarding','home','perm-loc','feed','perm-cam','verify','card','dex','settings'];
+const screenOrder = ['onboarding','home','perm-loc','feed','perm-cam','verify','card','dex','journal','settings'];
 let currentScreen = 'onboarding';
 
 function go(screen){
@@ -160,7 +160,7 @@ function go(screen){
   currentScreen = screen;
   $('#main').scrollTop = 0;
   // bottom nav aktif
-  const navMap = { home:'home', dex:'dex', settings:'settings' };
+  const navMap = { home:'home', dex:'dex', settings:'settings', journal:'journal' };
   $$('.bottom-nav button').forEach(b=>{
     const active = b.dataset.nav === navMap[screen] || (screen==='find' && b.dataset.nav==='find');
     b.classList.toggle('active', active);
@@ -168,6 +168,7 @@ function go(screen){
   // render ulang konten yang dinamis per screen
   if(screen==='home') renderHome();
   if(screen==='dex') renderDex();
+  if(screen==='journal') renderJournal();
   if(screen==='settings') {/* statis */}
 }
 
@@ -768,13 +769,19 @@ $$('#dex-filter button').forEach(b=>{
 async function openCatDetail(id){
   const c = await getCat(id);
   if(!c) return;
+  const allCatsList = await allCats();
+  const badges = detectTwinBadges(allCatsList);
+  const myBadges = badges[c.id] || [];
   const content = el('div');
   const colorLabel = (COLORS.find(x=>x.id===c.color)||{}).label || c.color;
   const d = new Date(c.date);
   const locText = c.lat!=null ? `${c.lat.toFixed(4)}, ${c.lon.toFixed(4)}` : 'lokasi tidak dicatat';
+  const badgeHtml = myBadges.length ? `<div class="badge-grid">${myBadges.map(b=>
+    `<span class="badge-chip blush"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9 12l2 2 4-4"/></svg>${b.label}</span>`
+  ).join('')}</div>` : '';
   content.innerHTML = `
     <h3>${escapeHtml(c.name)}</h3>
-    <p class="mono" style="font-size:11px;color:var(--text-mute);margin-bottom:12px;">#${c.id} · ${d.toLocaleDateString('id-ID',{day:'numeric',month:'long',year:'numeric'})}</p>
+    <p class="mono" style="font-size:12px;color:var(--text-soft);margin-bottom:12px;">#${c.id} · ${d.toLocaleDateString('id-ID',{day:'numeric',month:'long',year:'numeric'})}</p>
     <div class="trading-card ${c.rarity==='langka'?'rare':''}" style="width:100%;transform:none;margin-bottom:14px;">
       <div class="id">#${c.id.replace('MDX-','')}</div>
       <div class="rarity-tag">${c.rarity==='langka'?'LANGKA':'BIASA'}</div>
@@ -784,16 +791,22 @@ async function openCatDetail(id){
       <div class="tag-row"><span>${colorLabel}</span><span>${c.rarity==='langka'?'Langka':'Biasa'}</span><span>${c.verifiedByAI?'Terverifikasi AI':'Konfirmasi manual'}</span></div>
       <div class="quote">"${escapeHtml(c.quote)}"</div>
     </div>
+    ${badgeHtml}
     <div class="row gap-8" style="flex-wrap:wrap;">
       <span class="pill">${c.verifiedByAI?'AI':'Manual'}</span>
       <span class="pill">${colorLabel}</span>
       <span class="pill">${locText}</span>
     </div>
     <div class="row gap-8 mt-16">
+      <button class="btn teal block" id="detail-share">
+        <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg>
+        Bagikan
+      </button>
       <button class="btn secondary block" id="detail-rename">Ganti nama</button>
       <button class="btn block danger" id="detail-delete" style="background:#a8462e;color:#fff;">Hapus</button>
     </div>`;
   openSheet(content);
+  $('#detail-share').addEventListener('click', ()=> openShareSheet(c));
   $('#detail-rename').addEventListener('click', ()=> renameCat(c));
   $('#detail-delete').addEventListener('click', ()=> deleteCatConfirm(c));
 }
@@ -839,6 +852,298 @@ async function deleteCatConfirm(c){
     closeSheet();
     renderDex(); renderHome();
   });
+}
+
+/* ---------------------------------------------------------------------
+   13b. Jurnal Berburu (linimasa harian otomatis)
+   --------------------------------------------------------------------- */
+async function renderJournal(){
+  const cats = await allCats();
+  const list = $('#journal-list');
+  $('#journal-count').textContent = `${cats.length} catatan`;
+  if(cats.length===0){
+    list.innerHTML = `<div class="empty-state">
+      <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" style="width:140px;">
+        <ellipse cx="100" cy="158" rx="58" ry="14" fill="rgba(58,46,42,0.10)"/>
+        <path d="M55 70 L38 28 L78 56 Z" fill="#E8804C"/>
+        <path d="M145 70 L162 28 L122 56 Z" fill="#E8804C"/>
+        <ellipse cx="100" cy="115" rx="62" ry="55" fill="#E8804C"/>
+        <ellipse cx="100" cy="128" rx="30" ry="24" fill="#FFF8ED"/>
+        <circle cx="82" cy="108" r="7.5" fill="#3A2E2A"/>
+        <circle cx="118" cy="108" r="7.5" fill="#3A2E2A"/>
+        <path d="M94 124 q6 6 12 0" stroke="#3A2E2A" stroke-width="3" fill="none" stroke-linecap="round"/>
+      </svg>
+      <h3>Jurnalmu masih kosong</h3>
+      <p>Setiap kucing yang kamu temukan akan otomatis tercatat di sini, dikelompokkan per hari.</p>
+    </div>`;
+    return;
+  }
+  // kelompokkan per hari (yyyy-mm-dd)
+  const byDay = {};
+  cats.forEach(c=>{
+    const d = new Date(c.date);
+    const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    (byDay[key] = byDay[key] || []).push(c);
+  });
+  // urut hari terbaru di atas
+  const days = Object.keys(byDay).sort().reverse();
+  list.innerHTML='';
+  days.forEach(key=>{
+    const entries = byDay[key].sort((a,b)=> new Date(b.date)-new Date(a.date));
+    const d = new Date(key+'T00:00:00');
+    const today = new Date(); today.setHours(0,0,0,0);
+    const yest = new Date(today); yest.setDate(yest.getDate()-1);
+    let label;
+    if(d.getTime()===today.getTime()) label='Hari ini';
+    else if(d.getTime()===yest.getTime()) label='Kemarin';
+    else label=d.toLocaleDateString('id-ID',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+    const totalXp = entries.reduce((s,c)=> s + CONFIG.XP_PER_CAT + (c.rarity==='langka'?CONFIG.XP_RARE_BONUS:0), 0);
+    const dayWrap = el('div',{class:'journal-day'});
+    dayWrap.appendChild(el('div',{class:'journal-day-head'}, [
+      el('span',{class:'date-pill'}, label),
+      el('span',{class:'total'}, `${entries.length} kucing · +${totalXp} XP`),
+      el('span',{class:'line'}),
+    ]));
+    entries.forEach(c=>{
+      const d2 = new Date(c.date);
+      const hh = String(d2.getHours()).padStart(2,'0');
+      const mm = String(d2.getMinutes()).padStart(2,'0');
+      const colorLabel = (COLORS.find(x=>x.id===c.color)||{}).label || c.color;
+      const xp = CONFIG.XP_PER_CAT + (c.rarity==='langka'?CONFIG.XP_RARE_BONUS:0);
+      const entry = el('div',{class:'journal-entry'+(c.rarity==='langka'?' rare':''), onclick:()=>openCatDetail(c.id)});
+      entry.appendChild(el('div',{class:'time'}, [el('b',{},hh), mm]));
+      const thumb = el('div',{class:'thumb'});
+      if(c.photo) thumb.innerHTML = `<img src="${c.photo}" alt="${escapeHtml(c.name)}">`;
+      entry.appendChild(thumb);
+      const info = el('div',{class:'info'});
+      info.appendChild(el('div',{class:'n'}, c.name));
+      info.appendChild(el('div',{class:'m'}, `#${c.id.replace('MDX-','')} · ${colorLabel} · ${c.rarity}`));
+      entry.appendChild(info);
+      entry.appendChild(el('div',{class:'xp'}, `+${xp}`));
+      dayWrap.appendChild(entry);
+    });
+    list.appendChild(dayWrap);
+  });
+}
+
+/* ---------------------------------------------------------------------
+   13c. Ekspor kartu kucing sebagai gambar (canvas-based)
+   Output 1080x1080 (kotak) atau 1080x1920 (story), polaroid + watermark.
+   --------------------------------------------------------------------- */
+async function openShareSheet(cat){
+  const content = el('div');
+  content.innerHTML = `
+    <h3>
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#E8804C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg>
+      Bagikan kartu
+    </h3>
+    <p>Ubah kartu kucing ini jadi gambar siap dibagikan ke Instagram atau X. Pilih format, lalu unduh.</p>
+    <div class="share-preview"><canvas id="share-canvas" width="1080" height="1080"></canvas></div>
+    <p class="preview-note">Pratinjau di atas. Kartu asli beresolusi penuh saat diunduh.</p>
+    <div class="share-format-row">
+      <button class="share-format active" data-fmt="1080">Kotak<span class="dim">1080 x 1080</span></button>
+      <button class="share-format" data-fmt="1080x1920">Story<span class="dim">1080 x 1920</span></button>
+    </div>
+    <div class="row gap-8 mt-12">
+      <button class="btn secondary block" id="share-close">Tutup</button>
+      <button class="btn block" id="share-download">
+        <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></svg>
+        Unduh gambar
+      </button>
+    </div>`;
+  openSheet(content);
+  let currentFmt = '1080';
+  const canvas = $('#share-canvas');
+  await drawShareCard(canvas, cat, 1080);
+
+  $$('.share-format').forEach(b=>{
+    b.addEventListener('click', async ()=>{
+      $$('.share-format').forEach(x=>x.classList.remove('active'));
+      b.classList.add('active');
+      currentFmt = b.dataset.fmt;
+      if(currentFmt==='1080'){ canvas.width=1080; canvas.height=1080; }
+      else { canvas.width=1080; canvas.height=1920; }
+      await drawShareCard(canvas, cat, currentFmt==='1080x1920'?1920:1080);
+    });
+  });
+  $('#share-close').addEventListener('click', closeSheet);
+  $('#share-download').addEventListener('click', ()=>{
+    const link = document.createElement('a');
+    link.download = `meongdex-${cat.id}.png`;
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+    toast('Gambar kartu diunduh','success',ICONS.check);
+  });
+}
+
+async function drawShareCard(canvas, cat, h){
+  const W = canvas.width, H = canvas.height;
+  const ctx = canvas.getContext('2d');
+  // latar krem dengan dot pattern
+  ctx.fillStyle = '#FFF8ED';
+  ctx.fillRect(0,0,W,H);
+  ctx.fillStyle = 'rgba(58,46,42,0.05)';
+  for(let y=0; y<H; y+=34){ for(let x=0; x<W; x+=34){ ctx.beginPath(); ctx.arc(x,y,2,0,Math.PI*2); ctx.fill(); } }
+
+  const isStory = H > W;
+  const cardW = isStory ? 880 : Math.min(900, W-100);
+  const cardH = isStory ? 1240 : cardW;
+  const cardX = (W - cardW)/2;
+  const cardY = isStory ? 200 : (H - cardH)/2;
+
+  // bayangan kartu
+  ctx.fillStyle = 'rgba(58,46,42,0.28)';
+  roundRect(ctx, cardX+8, cardY+14, cardW, cardH, 36); ctx.fill();
+  // kartu putih
+  ctx.fillStyle = '#FFFDF8';
+  roundRect(ctx, cardX, cardY, cardW, cardH, 36); ctx.fill();
+  // border kelangkaan
+  const border = cat.rarity==='langka' ? '#D4AF37' : '#4A9B8E';
+  ctx.strokeStyle = border; ctx.lineWidth = 10;
+  roundRect(ctx, cardX, cardY, cardW, cardH, 36); ctx.stroke();
+
+  // foto
+  const pad = 28;
+  const photoX = cardX+pad, photoY = cardY+pad;
+  const photoW = cardW - pad*2, photoH = photoW;
+  ctx.fillStyle = '#F3D9AE';
+  roundRect(ctx, photoX, photoY, photoW, photoH, 22); ctx.fill();
+  if(cat.photo){
+    try{
+      const img = await loadImage(cat.photo);
+      // cover fit
+      const scale = Math.max(photoW/img.width, photoH/img.height);
+      const dw = img.width*scale, dh = img.height*scale;
+      ctx.save();
+      roundRect(ctx, photoX, photoY, photoW, photoH, 22); ctx.clip();
+      ctx.drawImage(img, photoX+(photoW-dw)/2, photoY+(photoH-dh)/2, dw, dh);
+      ctx.restore();
+    }catch(e){}
+  }
+  // id badge top-left foto
+  ctx.fillStyle = 'rgba(58,46,42,0.82)';
+  roundRect(ctx, photoX+18, photoY+18, 150, 50, 12); ctx.fill();
+  ctx.fillStyle = '#fff'; ctx.font = 'bold 24px "JetBrains Mono",monospace';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('#'+cat.id.replace('MDX-',''), photoX+34, photoY+43);
+  // rarity tag top-right foto
+  const rarityLabel = cat.rarity==='langka' ? 'LANGKA' : 'BIASA';
+  ctx.font = 'bold 22px "JetBrains Mono",monospace';
+  const rw = ctx.measureText(rarityLabel).width + 40;
+  ctx.fillStyle = border;
+  roundRect(ctx, photoX+photoW-rw-18, photoY+18, rw, 50, 999); ctx.fill();
+  ctx.fillStyle = cat.rarity==='langka' ? '#4A3A0E' : '#fff';
+  ctx.textAlign = 'center';
+  ctx.fillText(rarityLabel, photoX+photoW-rw/2-18, photoY+43);
+  ctx.textAlign = 'left';
+
+  // nama
+  const nameY = photoY + photoH + 50;
+  ctx.fillStyle = '#3A2E2A';
+  ctx.font = '600 52px "Fredoka",sans-serif';
+  ctx.textBaseline = 'alphabetic';
+  ctx.fillText(cat.name, cardX+pad, nameY);
+
+  // sub: tanggal · lokasi
+  const d = new Date(cat.date);
+  const dateStr = d.toLocaleDateString('id-ID',{day:'numeric',month:'short',year:'numeric'});
+  const locStr = cat.lat!=null ? `${cat.lat.toFixed(3)}, ${cat.lon.toFixed(3)}` : 'lokasi tidak dicatat';
+  ctx.fillStyle = '#8a7566';
+  ctx.font = '500 24px "JetBrains Mono",monospace';
+  ctx.fillText(`${dateStr} · ${locStr}`, cardX+pad, nameY+34);
+
+  // tag pills
+  const colorLabel = (COLORS.find(x=>x.id===cat.color)||{}).label || cat.color;
+  const tags = [colorLabel, cat.rarity==='langka'?'Langka':'Biasa', cat.verifiedByAI?'Terverifikasi AI':'Konfirmasi manual'];
+  let tx = cardX+pad; const ty = nameY+80;
+  ctx.font = 'bold 20px "JetBrains Mono",monospace';
+  tags.forEach(t=>{
+    const tw = ctx.measureText(t).width + 36;
+    ctx.fillStyle = 'rgba(74,155,142,.14)';
+    roundRect(ctx, tx, ty, tw, 44, 999); ctx.fill();
+    ctx.fillStyle = '#357569';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(t, tx+18, ty+22);
+    ctx.textBaseline = 'alphabetic';
+    tx += tw + 12;
+  });
+
+  // quote
+  const quoteY = ty + 90;
+  ctx.strokeStyle = '#E4D5BE'; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(cardX+pad, quoteY); ctx.lineTo(cardX+cardW-pad, quoteY); ctx.stroke();
+  ctx.fillStyle = '#5C4B44';
+  ctx.font = 'italic 26px "Plus Jakarta Sans",sans-serif';
+  wrapText(ctx, '"'+cat.quote+'"', cardX+pad, quoteY+40, cardW-pad*2, 36);
+
+  // watermark Meongdex di luar kartu (bawah)
+  if(isStory){
+    ctx.fillStyle = 'rgba(58,46,42,0.5)';
+    ctx.font = '500 26px "JetBrains Mono",monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText('MEONGDEX · temukan. kasih makan. koleksi.', W/2, H-80);
+    ctx.textAlign = 'left';
+  }
+
+  // logo Si Oren mini di pojok kartu
+  drawMiniMascot(ctx, cardX+cardW-70, cardY+cardH-70, 40);
+}
+
+function roundRect(ctx,x,y,w,h,r){
+  ctx.beginPath();
+  ctx.moveTo(x+r,y);
+  ctx.arcTo(x+w,y,x+w,y+h,r);
+  ctx.arcTo(x+w,y+h,x,y+h,r);
+  ctx.arcTo(x,y+h,x,y,r);
+  ctx.arcTo(x,y,x+w,y,r);
+  ctx.closePath();
+}
+function wrapText(ctx,text,x,y,maxW,lineH){
+  const words = text.split(' '); let line='', yy=y;
+  for(const w of words){
+    const test = line? line+' '+w : w;
+    if(ctx.measureText(test).width > maxW && line){ ctx.fillText(line,x,yy); line=w; yy+=lineH; }
+    else line=test;
+  }
+  if(line) ctx.fillText(line,x,yy);
+}
+function loadImage(src){
+  return new Promise((res,rej)=>{ const i=new Image(); i.onload=()=>res(i); i.onerror=rej; i.src=src; });
+}
+function drawMiniMascot(ctx,x,y,s){
+  // kepala oranye sederhana
+  ctx.save(); ctx.translate(x,y);
+  ctx.fillStyle='#E8804C';
+  ctx.beginPath(); ctx.ellipse(0,0,s*0.7,s*0.6,0,0,Math.PI*2); ctx.fill();
+  // telinga
+  ctx.beginPath(); ctx.moveTo(-s*0.5,-s*0.3); ctx.lineTo(-s*0.65,-s*0.8); ctx.lineTo(-s*0.2,-s*0.45); ctx.closePath(); ctx.fill();
+  ctx.beginPath(); ctx.moveTo(s*0.5,-s*0.3); ctx.lineTo(s*0.65,-s*0.8); ctx.lineTo(s*0.2,-s*0.45); ctx.closePath(); ctx.fill();
+  // mata
+  ctx.fillStyle='#3A2E2A';
+  ctx.beginPath(); ctx.arc(-s*0.22,-s*0.05,s*0.1,0,Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.arc(s*0.22,-s*0.05,s*0.1,0,Math.PI*2); ctx.fill();
+  ctx.restore();
+}
+
+/* ---------------------------------------------------------------------
+   13d. Badge kembaran kucing (deteksi kombinasi warna/pola sama)
+   --------------------------------------------------------------------- */
+function detectTwinBadges(cats){
+  const badges = {}; // catId -> badge info
+  const byColor = {};
+  cats.forEach(c=>{
+    (byColor[c.color] = byColor[c.color] || []).push(c);
+  });
+  Object.entries(byColor).forEach(([color, group])=>{
+    if(group.length >= 2){
+      // tandai semua kucing warna ini sebagai punya twin
+      group.forEach(c=>{
+        badges[c.id] = badges[c.id] || [];
+        badges[c.id].push({type:'twin', label:'Kembaran ditemukan', color});
+      });
+    }
+  });
+  return badges;
 }
 
 /* ---------------------------------------------------------------------
@@ -944,6 +1249,21 @@ function updateClock(){
 updateClock(); setInterval(updateClock, 30000);
 
 /* ---------------------------------------------------------------------
+   16b. A11y: tandai SVG dekoratif sebagai aria-hidden
+   --------------------------------------------------------------------- */
+function fixSvgA11y(){
+  document.querySelectorAll('svg:not([aria-label]):not([aria-hidden])').forEach(s=>{
+    // SVG yang ada di dalam button/link dengan teks -> dekoratif
+    const interactive = s.closest('button,a,[role=button]');
+    if(interactive && interactive.textContent.trim()){ s.setAttribute('aria-hidden','true'); return; }
+    // SVG yang sudah ada <title> -> biarkan
+    if(s.querySelector('title')) return;
+    // sisanya (pola dekoratif, ornament, mascot dengan label context) -> hidden
+    s.setAttribute('aria-hidden','true');
+  });
+}
+
+/* ---------------------------------------------------------------------
    17. Init
    --------------------------------------------------------------------- */
 (async function init(){
@@ -951,6 +1271,10 @@ updateClock(); setInterval(updateClock, 30000);
   renderOnboard();
   if(player.onboarded){ go('home'); }
   else { go('onboarding'); }
+  fixSvgA11y();
+  // re-run a11y fix setelah render dinamis (pemanggilan internal di go() sudah handle via DOM mutation)
+  const obs = new MutationObserver(()=> fixSvgA11y());
+  obs.observe(document.body, { childList:true, subtree:true });
   // preload model AI di latar belakang (non-blocking) setelah onboarding
   setTimeout(()=>{ loadModel().catch(()=>{}); }, 4000);
 })();
