@@ -895,6 +895,37 @@ $('#set-clear').addEventListener('click', ()=>{
 });
 
 /* ---------------------------------------------------------------------
+   14b. PWA install prompt
+   --------------------------------------------------------------------- */
+let deferredPrompt = null;
+window.addEventListener('beforeinstallprompt', (e)=>{
+  e.preventDefault();
+  deferredPrompt = e;
+});
+window.addEventListener('appinstalled', ()=>{
+  deferredPrompt = null;
+  toast('Meongdex terpasang. Cek layar utamamu!','success',ICONS.check);
+});
+$('#set-install').addEventListener('click', async ()=>{
+  if(deferredPrompt){
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    deferredPrompt = null;
+    if(outcome==='accepted') toast('Memasang Meongdex...','',ICONS.paw);
+  }else{
+    // belum eligible atau sudah dipasang: arahkan pakai menu browser
+    const content = el('div');
+    const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+    content.innerHTML = isIOS
+      ? `<h3>Pasang di iPhone/iPad</h3><p>Untuk memasang Meongdex di layar utama iOS: tekan tombol Bagikan di Safari, lalu pilih "Tambah ke Layar Utama".</p>
+         <div class="row gap-8 mt-12"><button class="btn block" onclick="document.getElementById('overlay').classList.remove('active')">Mengerti</button></div>`
+      : `<h3>Pasang sebagai aplikasi</h3><p>Belum muncul prompt otomatis? Buka menu browser (titik tiga di Chrome), lalu pilih "Instal aplikasi" atau "Tambahkan ke Layar Utama".</p>
+         <div class="row gap-8 mt-12"><button class="btn block" onclick="document.getElementById('overlay').classList.remove('active')">Mengerti</button></div>`;
+    openSheet(content);
+  }
+});
+
+/* ---------------------------------------------------------------------
    15. Service worker
    --------------------------------------------------------------------- */
 if('serviceWorker' in navigator){

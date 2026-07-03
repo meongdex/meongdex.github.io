@@ -4,56 +4,490 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 <meta name="theme-color" content="#FFF8ED" />
+<meta name="description" content="Meongdex — game berburu kucing sungguhan di dunia nyata. Temukan, kasih makan, foto, dan koleksi sebagai kartu di Meongdex-mu. Gratis, bisa dipasang sebagai aplikasi Android." />
 <title>Meongdex — Temukan. Kasih Makan. Koleksi.</title>
 <link rel="icon" type="image/png" href="game/icons/favicon-32.png" />
+<link rel="apple-touch-icon" href="game/icons/apple-touch-icon.png" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-title" content="Meongdex" />
+
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;1,500&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet" />
+
 <style>
-  *{box-sizing:border-box;margin:0;padding:0;}
+  :root{
+    --cream:#FFF8ED; --cream-deep:#F5EBDA; --paper:#FFFDF8;
+    --terracotta:#E8804C; --terracotta-deep:#C9652F;
+    --teal:#4A9B8E; --teal-deep:#357569;
+    --charcoal:#3A2E2A; --gold:#D4AF37; --blush:#F2C6C2; --line:#E4D5BE;
+    --text-soft:#5C4B44; --text-mute:#8a7566;
+    --shadow:0 12px 28px -14px rgba(58,46,42,0.35);
+    --shadow-lg:0 22px 48px -18px rgba(58,46,42,0.42);
+  }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+  html{font-size:16px;scroll-behavior:smooth;}
   body{
     font-family:'Plus Jakarta Sans',system-ui,sans-serif;
+    color:var(--charcoal);line-height:1.55;
     background:
       radial-gradient(circle at 8px 8px, rgba(58,46,42,0.05) 1.5px, transparent 1.5px) 0 0/26px 26px,
-      #FFF8ED;
-    color:#3A2E2A;min-height:100dvh;display:flex;align-items:center;justify-content:center;padding:24px;
+      var(--cream);
+    -webkit-font-smoothing:antialiased;
   }
-  .wrap{max-width:420px;text-align:center;}
-  .eyebrow{display:inline-block;font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#C9652F;background:rgba(232,128,76,0.12);border:1px solid rgba(232,128,76,0.3);padding:6px 12px;border-radius:999px;margin-bottom:18px;}
-  h1{font-family:'Fredoka',sans-serif;font-weight:700;font-size:40px;line-height:1.05;margin-bottom:12px;}
-  h1 .accent{color:#C9652F;}
-  p{font-size:15px;line-height:1.6;color:#5C4B44;margin-bottom:24px;}
-  .mascot{width:180px;margin:0 auto 8px;animation:floaty 3s ease-in-out infinite;}
-  @keyframes floaty{0%,100%{transform:translateY(0);}50%{transform:translateY(-8px);}}
-  .btn{display:inline-flex;align-items:center;gap:8px;background:#E8804C;color:#fff;border:none;border-radius:999px;font-family:'Fredoka',sans-serif;font-weight:600;font-size:16px;padding:14px 28px;min-height:48px;text-decoration:none;box-shadow:0 6px 14px -6px rgba(232,128,76,0.55);}
-  .btn:hover{background:#C9652F;}
-  .note{margin-top:18px;font-size:12px;color:#8a7566;font-family:'JetBrains Mono',monospace;}
+  h1,h2,h3,h4,.display{font-family:'Fredoka',sans-serif;font-weight:600;line-height:1.08;}
+  .mono{font-family:'JetBrains Mono',monospace;}
+  a{color:inherit;}
+  img{max-width:100%;display:block;}
+
+  .wrap{max-width:1120px;margin:0 auto;padding:0 22px;}
+
+  /* ---------- nav ---------- */
+  header.nav{
+    position:sticky;top:0;z-index:50;
+    background:rgba(255,248,237,0.86);backdrop-filter:blur(10px);
+    border-bottom:1px solid var(--line);
+  }
+  .nav-row{display:flex;align-items:center;justify-content:space-between;height:62px;}
+  .brand{display:flex;align-items:center;gap:10px;font-family:'Fredoka',sans-serif;font-weight:700;font-size:20px;}
+  .brand svg{width:34px;height:34px;}
+  .nav-links{display:none;gap:26px;align-items:center;}
+  .nav-links a{font-size:14px;font-weight:600;color:var(--text-soft);text-decoration:none;}
+  .nav-links a:hover{color:var(--terracotta-deep);}
+  .nav-cta{display:flex;gap:8px;align-items:center;}
+
+  .btn{
+    display:inline-flex;align-items:center;justify-content:center;gap:8px;
+    background:var(--terracotta);color:#fff;border:none;border-radius:999px;
+    font-family:'Fredoka',sans-serif;font-weight:600;font-size:15px;
+    padding:13px 22px;min-height:48px;text-decoration:none;cursor:pointer;
+    box-shadow:0 6px 14px -6px rgba(232,128,76,0.55);transition:transform .12s, background .12s;
+  }
+  .btn:hover{background:var(--terracotta-deep);}
+  .btn:active{transform:translateY(1px);}
+  .btn.secondary{background:transparent;color:var(--charcoal);border:2px solid var(--charcoal);box-shadow:none;}
+  .btn.secondary:hover{background:var(--paper);}
+  .btn.teal{background:var(--teal);box-shadow:0 6px 14px -6px rgba(74,155,142,0.55);}
+  .btn.teal:hover{background:var(--teal-deep);}
+  .btn.sm{padding:9px 16px;font-size:13px;min-height:40px;}
+  .btn .ico{width:18px;height:18px;}
+
+  /* ---------- hero ---------- */
+  .hero{
+    position:relative;overflow:hidden;
+    padding:56px 0 40px;
+  }
+  .hero-grid{display:grid;grid-template-columns:1fr;gap:36px;align-items:center;}
+  .eyebrow{
+    display:inline-flex;align-items:center;gap:8px;
+    font-family:'JetBrains Mono',monospace;font-size:12px;letter-spacing:.14em;
+    text-transform:uppercase;color:var(--teal-deep);
+    background:rgba(74,155,142,.14);border:1px solid rgba(74,155,142,.3);
+    padding:7px 13px;border-radius:999px;margin-bottom:18px;
+  }
+  .hero h1{font-size:clamp(36px,7vw,56px);line-height:1.02;margin-bottom:18px;}
+  .hero h1 .accent{color:var(--terracotta-deep);}
+  .hero p.lead{font-size:clamp(15px,2.2vw,18px);color:var(--text-soft);max-width:480px;margin-bottom:26px;}
+  .cta-row{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:22px;}
+  .hero-trust{display:flex;gap:18px;flex-wrap:wrap;align-items:center;}
+  .hero-trust .item{display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--text-soft);font-weight:600;}
+  .hero-trust .item svg{width:16px;height:16px;color:var(--teal-deep);}
+
+  .hero-visual{position:relative;display:flex;align-items:center;justify-content:center;min-height:320px;}
+  .hero-visual .paw-ring{
+    position:absolute;inset:0;border-radius:999px;
+    background:radial-gradient(circle, rgba(232,128,76,.16), transparent 60%);
+  }
+  .hero-visual .paws{position:absolute;inset:0;overflow:hidden;}
+  .hero-visual .paws svg{position:absolute;opacity:.18;color:var(--terracotta-deep);}
+  .hero-visual svg.mascot-big{width:min(300px,70vw);position:relative;z-index:2;animation:floaty 3.4s ease-in-out infinite;}
+  @keyframes floaty{0%,100%{transform:translateY(0);}50%{transform:translateY(-10px);}}
+  .hero-visual .badge-float{
+    position:absolute;z-index:3;background:var(--paper);border:1px solid var(--line);
+    border-radius:14px;padding:9px 13px;box-shadow:var(--shadow);display:flex;align-items:center;gap:8px;
+    font-size:12px;font-weight:700;font-family:'Fredoka',sans-serif;
+  }
+  .hero-visual .badge-float.b1{top:8%;left:-2%;animation:floaty 3s ease-in-out infinite .3s;}
+  .hero-visual .badge-float.b2{bottom:10%;right:-2%;animation:floaty 3.4s ease-in-out infinite .8s;}
+  .hero-visual .badge-float .dot{width:9px;height:9px;border-radius:999px;}
+
+  /* ---------- feature strip ---------- */
+  .features{padding:30px 0;}
+  .feature-grid{display:grid;grid-template-columns:1fr;gap:1px;background:var(--line);border:1px solid var(--line);border-radius:24px;overflow:hidden;}
+  .feature{background:var(--paper);padding:28px 24px;}
+  .feature .fico{width:38px;height:38px;border-radius:12px;display:grid;place-items:center;margin-bottom:14px;}
+  .feature .fico.t{background:rgba(232,128,76,.14);color:var(--terracotta-deep);}
+  .feature .fico.te{background:rgba(74,155,142,.14);color:var(--teal-deep);}
+  .feature .fico.g{background:rgba(212,175,55,.18);color:#9c7b16;}
+  .feature .fico svg{width:20px;height:20px;}
+  .feature h3{font-size:18px;margin-bottom:6px;}
+  .feature p{font-size:13.5px;color:var(--text-soft);line-height:1.55;}
+
+  /* ---------- section title ---------- */
+  .section{padding:48px 0;}
+  .section-head{margin-bottom:26px;}
+  .section-head .tag{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--teal-deep);background:rgba(74,155,142,.12);padding:4px 10px;border-radius:7px;display:inline-block;margin-bottom:10px;}
+  .section-head h2{font-size:clamp(26px,4vw,34px);}
+  .section-head p{font-size:15px;color:var(--text-soft);max-width:560px;margin-top:8px;}
+
+  /* ---------- screenshots ---------- */
+  .shots{display:grid;grid-template-columns:1fr;gap:18px;}
+  .shot{
+    background:var(--paper);border:1px solid var(--line);border-radius:22px;padding:12px;
+    box-shadow:var(--shadow);position:relative;overflow:hidden;
+  }
+  .shot .frame{
+    border-radius:16px;overflow:hidden;background:var(--cream-deep);aspect-ratio:9/16;
+    border:1px solid var(--line);
+  }
+  .shot .frame img{width:100%;height:100%;object-fit:cover;object-position:top;}
+  .shot .cap{display:flex;align-items:center;gap:8px;padding:12px 4px 4px;}
+  .shot .cap .n{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-mute);}
+  .shot .cap .t{font-family:'Fredoka',sans-serif;font-weight:600;font-size:14px;}
+
+  /* ---------- steps ---------- */
+  .steps{display:grid;grid-template-columns:1fr;gap:16px;}
+  .step{
+    display:flex;gap:16px;background:var(--paper);border:1px solid var(--line);border-radius:18px;padding:18px;
+  }
+  .step .num{
+    flex-shrink:0;width:42px;height:42px;border-radius:12px;background:var(--terracotta);color:#fff;
+    display:grid;place-items:center;font-family:'Fredoka',sans-serif;font-weight:700;font-size:18px;box-shadow:0 6px 14px -6px rgba(232,128,76,.5);
+  }
+  .step h4{font-size:16px;margin-bottom:4px;}
+  .step p{font-size:13.5px;color:var(--text-soft);line-height:1.5;}
+
+  /* ---------- FAQ ---------- */
+  .faq{display:flex;flex-direction:column;gap:12px;}
+  .faq-item{background:var(--paper);border:1px solid var(--line);border-radius:16px;overflow:hidden;}
+  .faq-item summary{
+    list-style:none;cursor:pointer;padding:16px 18px;display:flex;align-items:center;justify-content:space-between;gap:12px;
+    font-family:'Fredoka',sans-serif;font-weight:600;font-size:15px;
+  }
+  .faq-item summary::-webkit-details-marker{display:none;}
+  .faq-item summary .chev{transition:transform .2s ease;color:var(--text-mute);flex-shrink:0;}
+  .faq-item[open] summary .chev{transform:rotate(180deg);}
+  .faq-item .ans{padding:0 18px 16px;font-size:13.5px;color:var(--text-soft);line-height:1.6;}
+
+  /* ---------- final cta ---------- */
+  .final{padding:48px 0 64px;}
+  .final-card{
+    background:linear-gradient(135deg,var(--terracotta) 0%,var(--terracotta-deep) 100%);
+    border-radius:28px;padding:40px 28px;text-align:center;color:#fff;position:relative;overflow:hidden;
+  }
+  .final-card .paws{position:absolute;inset:0;opacity:.12;}
+  .final-card .paws svg{position:absolute;color:#fff;}
+  .final-card h2{font-size:clamp(26px,4vw,34px);margin-bottom:10px;position:relative;}
+  .final-card p{font-size:15px;opacity:.95;margin-bottom:22px;position:relative;}
+  .final-card .cta-row{justify-content:center;position:relative;}
+  .final-card .btn.secondary{color:#fff;border-color:#fff;background:rgba(255,255,255,.12);}
+  .final-card .btn.secondary:hover{background:rgba(255,255,255,.22);}
+
+  footer{border-top:1px solid var(--line);padding:32px 0 40px;}
+  .foot-row{display:flex;flex-direction:column;gap:18px;align-items:center;text-align:center;}
+  .foot-row .brand{justify-content:center;}
+  .foot-row .links{display:flex;gap:20px;flex-wrap:wrap;justify-content:center;}
+  .foot-row .links a{font-size:13px;color:var(--text-soft);text-decoration:none;}
+  .foot-row .links a:hover{color:var(--terracotta-deep);}
+  .foot-row .copy{font-size:12px;color:var(--text-mute);font-family:'JetBrains Mono',monospace;}
+
+  /* ---------- responsive ---------- */
+  @media (min-width:680px){
+    .hero-grid{grid-template-columns:1.1fr 0.9fr;gap:30px;}
+    .feature-grid{grid-template-columns:repeat(3,1fr);}
+    .shots{grid-template-columns:repeat(2,1fr);}
+    .steps{grid-template-columns:repeat(2,1fr);}
+    .nav-links{display:flex;}
+  }
+  @media (min-width:920px){
+    .shots{grid-template-columns:repeat(4,1fr);}
+    .steps{grid-template-columns:repeat(4,1fr);}
+    .foot-row{flex-direction:row;justify-content:space-between;text-align:left;}
+    .foot-row .brand{justify-content:flex-start;}
+    .foot-row .links{justify-content:flex-end;}
+  }
+  @media (prefers-reduced-motion:reduce){*{animation:none !important;}}
 </style>
 </head>
 <body>
-<div class="wrap">
-  <svg class="mascot" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" aria-label="Maskot Si Oren">
-    <ellipse cx="100" cy="158" rx="58" ry="14" fill="rgba(58,46,42,0.10)"/>
-    <path d="M55 70 L38 28 L78 56 Z" fill="#E8804C"/>
-    <path d="M145 70 L162 28 L122 56 Z" fill="#E8804C"/>
-    <path d="M60 66 L48 42 L74 56 Z" fill="#C9652F" opacity="0.55"/>
-    <path d="M140 66 L152 42 L126 56 Z" fill="#C9652F" opacity="0.55"/>
-    <ellipse cx="100" cy="115" rx="62" ry="55" fill="#E8804C"/>
-    <path d="M45 100 q10 20 0 40" stroke="#C9652F" stroke-width="5" fill="none" stroke-linecap="round" opacity="0.7"/>
-    <path d="M155 100 q-10 20 0 40" stroke="#C9652F" stroke-width="5" fill="none" stroke-linecap="round" opacity="0.7"/>
-    <ellipse cx="100" cy="128" rx="30" ry="24" fill="#FFF8ED"/>
-    <circle cx="82" cy="108" r="7.5" fill="#3A2E2A"/>
-    <circle cx="118" cy="108" r="7.5" fill="#3A2E2A"/>
-    <circle cx="84.5" cy="105" r="2.4" fill="#fff"/>
-    <circle cx="120.5" cy="105" r="2.4" fill="#fff"/>
-    <path d="M96 120 q4 4 4 4 q0 0 4 -4" stroke="#3A2E2A" stroke-width="3" fill="none" stroke-linecap="round"/>
-    <path d="M100 120 v4" stroke="#3A2E2A" stroke-width="3" stroke-linecap="round"/>
-    <path d="M94 124 q6 6 12 0" stroke="#3A2E2A" stroke-width="3" fill="none" stroke-linecap="round"/>
-    <path d="M70 128 q-16 -2 -28 4M70 134 q-16 4 -28 10M130 128 q16 -2 28 4M130 134 q16 4 28 10" stroke="#3A2E2A" stroke-width="2" fill="none" stroke-linecap="round" opacity="0.85"/>
-    <path d="M60 155 Q100 178 140 155" stroke="#C9652F" stroke-width="6" fill="none" stroke-linecap="round"/>
-  </svg>
-  <span class="eyebrow">Game berburu kucing dunia nyata</span>
-  <h1>Temukan kucing.<br>Kasih makan.<br><span class="accent">Koleksi di Meongdex.</span></h1>
-  <p>Landing page lengkap hadir di Fase 2. Untuk sekarang, langsung masuk dan mulai berburu kucing pertamamu.</p>
-  <a class="btn" href="game/index.html">Masuk game</a>
-  <div class="note">Meongdex · Fase 1 (MVP) · gratis sepenuhnya</div>
-</div>
+
+<!-- ===== NAV ===== -->
+<header class="nav">
+  <div class="wrap nav-row">
+    <a class="brand" href="#top" aria-label="Meongdex beranda">
+      <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <path d="M55 70 L38 28 L78 56 Z" fill="#E8804C"/>
+        <path d="M145 70 L162 28 L122 56 Z" fill="#E8804C"/>
+        <ellipse cx="100" cy="115" rx="62" ry="55" fill="#E8804C"/>
+        <ellipse cx="100" cy="128" rx="30" ry="24" fill="#FFF8ED"/>
+        <circle cx="82" cy="108" r="7.5" fill="#3A2E2A"/>
+        <circle cx="118" cy="108" r="7.5" fill="#3A2E2A"/>
+        <path d="M94 124 q6 6 12 0" stroke="#3A2E2A" stroke-width="3" fill="none" stroke-linecap="round"/>
+      </svg>
+      Meongdex
+    </a>
+    <nav class="nav-links">
+      <a href="#cara">Cara main</a>
+      <a href="#layar">Layar</a>
+      <a href="#install">Install APK</a>
+      <a href="#faq">FAQ</a>
+    </nav>
+    <div class="nav-cta">
+      <a class="btn sm" href="game/index.html">Main di Browser</a>
+    </div>
+  </div>
+</header>
+
+<!-- ===== HERO ===== -->
+<section class="hero" id="top">
+  <div class="wrap hero-grid">
+    <div>
+      <span class="eyebrow">Game berburu kucing dunia nyata</span>
+      <h1>Temukan kucing.<br>Kasih makan.<br><span class="accent">Koleksi di Meongdex.</span></h1>
+      <p class="lead">Setiap kucing di jalan yang kamu temui, dekati, dan foto — tersimpan selamanya sebagai kartu polaroid di Meongdex-mu. Gratis, ringan, dimainkan sambil jalan santai.</p>
+      <div class="cta-row">
+        <a class="btn" href="game/index.html">
+          <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9 8h6M9 12h6M9 16h3"/></svg>
+          Main di Browser
+        </a>
+        <a class="btn secondary" href="downloads/install-apk.html">
+          <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="#3A2E2A" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></svg>
+          Download APK Android
+        </a>
+      </div>
+      <div class="hero-trust">
+        <span class="item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg> Gratis sepenuhnya</span>
+        <span class="item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg> Data lokal di HP</span>
+        <span class="item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-4.9-9.5-9C.7 8.8 2 5 5.5 5c2 0 3.3 1.3 4 2.3.7-1 2-2.3 4-2.3 3.5 0 4.8 3.8 3 7-2.5 4.1-9.5 9-9.5 9z"/></svg> Tanpa iklan</span>
+      </div>
+    </div>
+    <div class="hero-visual">
+      <div class="paw-ring"></div>
+      <div class="paws" aria-hidden="true">
+        <svg style="top:6%;left:8%;width:22px;" viewBox="0 0 24 24" fill="currentColor"><path d="M12 21s-7-4.9-9.5-9C.7 8.8 2 5 5.5 5c2 0 3.3 1.3 4 2.3.7-1 2-2.3 4-2.3 3.5 0 4.8 3.8 3 7-2.5 4.1-9.5 9-9.5 9z"/></svg>
+        <svg style="bottom:12%;right:10%;width:18px;transform:rotate(40deg);" viewBox="0 0 24 24" fill="currentColor"><path d="M12 21s-7-4.9-9.5-9C.7 8.8 2 5 5.5 5c2 0 3.3 1.3 4 2.3.7-1 2-2.3 4-2.3 3.5 0 4.8 3.8 3 7-2.5 4.1-9.5 9-9.5 9z"/></svg>
+        <svg style="top:40%;right:2%;width:16px;transform:rotate(-20deg);" viewBox="0 0 24 24" fill="currentColor"><path d="M12 21s-7-4.9-9.5-9C.7 8.8 2 5 5.5 5c2 0 3.3 1.3 4 2.3.7-1 2-2.3 4-2.3 3.5 0 4.8 3.8 3 7-2.5 4.1-9.5 9-9.5 9z"/></svg>
+      </div>
+      <div class="badge-float b1"><span class="dot" style="background:var(--gold);"></span> Kartu langka!</div>
+      <div class="badge-float b2"><span class="dot" style="background:var(--teal);"></span> Lv 4 · 14 kucing</div>
+      <svg class="mascot-big" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" aria-label="Maskot Si Oren">
+        <ellipse cx="100" cy="158" rx="58" ry="14" fill="rgba(58,46,42,0.10)"/>
+        <path d="M55 70 L38 28 L78 56 Z" fill="#E8804C"/>
+        <path d="M145 70 L162 28 L122 56 Z" fill="#E8804C"/>
+        <path d="M60 66 L48 42 L74 56 Z" fill="#C9652F" opacity="0.55"/>
+        <path d="M140 66 L152 42 L126 56 Z" fill="#C9652F" opacity="0.55"/>
+        <ellipse cx="100" cy="115" rx="62" ry="55" fill="#E8804C"/>
+        <path d="M45 100 q10 20 0 40" stroke="#C9652F" stroke-width="5" fill="none" stroke-linecap="round" opacity="0.7"/>
+        <path d="M155 100 q-10 20 0 40" stroke="#C9652F" stroke-width="5" fill="none" stroke-linecap="round" opacity="0.7"/>
+        <ellipse cx="100" cy="128" rx="30" ry="24" fill="#FFF8ED"/>
+        <circle cx="82" cy="108" r="7.5" fill="#3A2E2A"/>
+        <circle cx="118" cy="108" r="7.5" fill="#3A2E2A"/>
+        <circle cx="84.5" cy="105" r="2.4" fill="#fff"/>
+        <circle cx="120.5" cy="105" r="2.4" fill="#fff"/>
+        <path d="M96 120 q4 4 4 4 q0 0 4 -4" stroke="#3A2E2A" stroke-width="3" fill="none" stroke-linecap="round"/>
+        <path d="M100 120 v4" stroke="#3A2E2A" stroke-width="3" stroke-linecap="round"/>
+        <path d="M94 124 q6 6 12 0" stroke="#3A2E2A" stroke-width="3" fill="none" stroke-linecap="round"/>
+        <path d="M70 128 q-16 -2 -28 4M70 134 q-16 4 -28 10M130 128 q16 -2 28 4M130 134 q16 4 28 10" stroke="#3A2E2A" stroke-width="2" fill="none" stroke-linecap="round" opacity="0.85"/>
+        <path d="M60 155 Q100 178 140 155" stroke="#C9652F" stroke-width="6" fill="none" stroke-linecap="round"/>
+      </svg>
+    </div>
+  </div>
+</section>
+
+<!-- ===== FEATURES ===== -->
+<section class="features">
+  <div class="wrap">
+    <div class="feature-grid">
+      <div class="feature">
+        <div class="fico t"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-4.9-9.5-9C.7 8.8 2 5 5.5 5c2 0 3.3 1.3 4 2.3.7-1 2-2.3 4-2.3 3.5 0 4.8 3.8 3 7-2.5 4.1-9.5 9-9.5 9z"/></svg></div>
+        <h3>Kucing sungguhan</h3>
+        <p>Bukan makhluk digital — kamu benar-benar keluar rumah dan bertemu kucing tetangga, kucing kampung, kucing warung.</p>
+      </div>
+      <div class="feature">
+        <div class="fico te"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M3 9h18M8 4v-.5M16 4v-.5"/><path d="M7.5 13.5h3M7.5 17h6"/></svg></div>
+        <h3>Koleksi permanen</h3>
+        <p>Tiap kucing tersimpan sebagai kartu polaroid di Meongdex-mu, lengkap dengan cerita singkat dan lokasi ditemukan.</p>
+      </div>
+      <div class="feature">
+        <div class="fico g"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l2.6 6.1L21 9l-5 4.4L17.4 20 12 16.6 6.6 20 8 13.4 3 9l6.4-.9L12 2z"/></svg></div>
+        <h3>Gratis sepenuhnya</h3>
+        <p>Main langsung di browser atau pasang sebagai aplikasi Android — tanpa biaya, tanpa iklan mengganggu, tanpa akun.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== CARA MAIN ===== -->
+<section class="section" id="cara">
+  <div class="wrap">
+    <div class="section-head">
+      <span class="tag">Cara main</span>
+      <h2>Tiga langkah, satu kartu baru</h2>
+      <p>Alurnya sengaja dibuat ringan supaya kamu bisa berburu sambil jalan santai ke warung atau taman.</p>
+    </div>
+    <div class="steps">
+      <div class="step">
+        <div class="num">1</div>
+        <div><h4>Temukan kucing</h4><p>Buka Meongdex, tekan tombol Temukan Kucing. Catat lokasi temuanmu secara otomatis.</p></div>
+      </div>
+      <div class="step">
+        <div class="num">2</div>
+        <div><h4>Kasih makan</h4><p>Tahan tombol lempar untuk mengatur daya, lepas. Kucing mendekat dan mulai tertarik.</p></div>
+      </div>
+      <div class="step">
+        <div class="num">3</div>
+        <div><h4>Foto &amp; verifikasi</h4><p>Ambil foto kucingnya. AI di HP-mu mengecek fotonya; kalau ragu, kamu tetap bisa konfirmasi manual.</p></div>
+      </div>
+      <div class="step">
+        <div class="num">4</div>
+        <div><h4>Koleksi di Meongdex</h4><p>Kartu polaroid baru tertempel di papan gabus Meongdex-mu selamanya. Naik level tiap koleksi.</p></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== LAYAR / SCREENSHOTS ===== -->
+<section class="section" id="layar" style="background:linear-gradient(180deg,transparent,rgba(245,235,218,0.5));">
+  <div class="wrap">
+    <div class="section-head">
+      <span class="tag">Layar</span>
+      <h2>Tampilan dalam game</h2>
+      <p>Onboarding ramah bersama Si Oren, beranda dengan radar kucing, sampai papan gabus koleksimu.</p>
+    </div>
+    <div class="shots">
+      <div class="shot">
+        <div class="frame"><img src="assets/screenshots/game-onboard.png" alt="Layar onboarding Meongdex bersama maskot Si Oren" loading="lazy" /></div>
+        <div class="cap"><span class="n">01</span><span class="t">Onboarding Si Oren</span></div>
+      </div>
+      <div class="shot">
+        <div class="frame"><img src="assets/screenshots/game-home.png" alt="Layar beranda Meongdex dengan radar kucing dan misi harian" loading="lazy" /></div>
+        <div class="cap"><span class="n">02</span><span class="t">Beranda &amp; misi</span></div>
+      </div>
+      <div class="shot">
+        <div class="frame"><img src="assets/screenshots/game-card.png" alt="Kartu kucing polaroid di Meongdex dengan border kelangkaan" loading="lazy" /></div>
+        <div class="cap"><span class="n">03</span><span class="t">Kartu polaroid</span></div>
+      </div>
+      <div class="shot">
+        <div class="frame"><img src="assets/screenshots/game-dex.png" alt="Papan gabus koleksi Meongdex dengan kartu kucing tertempel" loading="lazy" /></div>
+        <div class="cap"><span class="n">04</span><span class="t">Meongdex corkboard</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== INSTALL APK ===== -->
+<section class="section" id="install">
+  <div class="wrap">
+    <div class="section-head">
+      <span class="tag">Install APK</span>
+      <h2>Pasang Meongdex di Android</h2>
+      <p>Mau pasang seperti aplikasi biasa? Unduh APK-nya lalu ikuti empat langkah berikut. Untuk pengguna iPhone atau cukup main di browser, langsung tekan Main di Browser — Meongdex bisa dipasang ke layar utama tanpa APK.</p>
+    </div>
+    <div class="steps">
+      <div class="step">
+        <div class="num">1</div>
+        <div><h4>Unduh file APK</h4><p>Tekan tombol Download APK Android di atas. File <span class="mono">meongdex.apk</span> akan tersimpan di folder Download HP-mu.</p></div>
+      </div>
+      <div class="step">
+        <div class="num">2</div>
+        <div><h4>Izinkan sumber tidak dikenal</h4><p>Buka Pengaturan Android &rarr; Keamanan &rarr; aktifkan "Install unknown apps" untuk browser yang kamu pakai mengunduh.</p></div>
+      </div>
+      <div class="step">
+        <div class="num">3</div>
+        <div><h4>Buka file APK</h4><p>Buka folder Download, ketuk <span class="mono">meongdex.apk</span>. Android akan menampilkan konfirmasi instalasi.</p></div>
+      </div>
+      <div class="step">
+        <div class="num">4</div>
+        <div><h4>Install &amp; main</h4><p>Tekan Install, tunggu sebentar, lalu buka. Meongdex jalan sama persis seperti versi browser.</p></div>
+      </div>
+    </div>
+    <div style="margin-top:22px;text-align:center;">
+      <a class="btn" href="downloads/install-apk.html">
+        <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></svg>
+        Download APK Android
+      </a>
+    </div>
+  </div>
+</section>
+
+<!-- ===== FAQ ===== -->
+<section class="section" id="faq">
+  <div class="wrap">
+    <div class="section-head">
+      <span class="tag">FAQ</span>
+      <h2>Pertanyaan yang sering muncul</h2>
+    </div>
+    <div class="faq">
+      <details class="faq-item" open>
+        <summary>Apakah Meongdex benar-benar gratis?<span class="chev"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></span></summary>
+        <div class="ans">Ya. Tidak ada biaya, tidak ada langganan, tidak ada iklan. Semua library dan layanan yang dipakai (TensorFlow.js, IndexedDB, service worker) gratis dan berjalan di perangkatmu sendiri.</div>
+      </details>
+      <details class="faq-item">
+        <summary>Apakah foto kucing saya dikirim ke server?<span class="chev"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></span></summary>
+        <div class="ans">Tidak. Foto dan lokasi hanya disimpan lokal di perangkatmu (IndexedDB). Verifikasi AI juga dijalankan di browsermu, bukan di cloud. Tidak ada data yang diunggah ke mana pun.</div>
+      </details>
+      <details class="faq-item">
+        <summary>Kenapa harus izinkan sumber tidak dikenal untuk APK?<span class="chev"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></span></summary>
+        <div class="ans">Karena APK Meongdex tidak didistribusikan lewat Play Store. Android meminta izin ini sebagai pengaman agar kamu sadar sedang memasang aplikasi dari luar Play Store. Setelah terpasang, kamu bisa mematikan kembali izin tersebut.</div>
+      </details>
+      <details class="faq-item">
+        <summary>Bagaimana jika AI tidak mengenali kucing di foto saya?<span class="chev"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></span></summary>
+        <div class="ans">Tidak masalah. Meongdex tidak memblokir kamu. Kalau AI belum yakin, muncul tombol "Ya, ini kucing" untuk konfirmasi manual. Kamu tetap bisa menyimpan kartunya.</div>
+      </details>
+      <details class="faq-item">
+        <summary>Bisa main tanpa internet?<span class="chev"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></span></summary>
+        <div class="ans">Setelah kunjungan pertama, shell aplikasi dan Meongdex-mu tetap bisa dibuka tanpa internet berkat service worker. Deteksi AI butuh internet sekali di awal untuk mengunduh model, lalu tersimpan untuk pemakaian berikutnya.</div>
+      </details>
+    </div>
+  </div>
+</section>
+
+<!-- ===== FINAL CTA ===== -->
+<section class="final">
+  <div class="wrap">
+    <div class="final-card">
+      <div class="paws" aria-hidden="true">
+        <svg style="top:14%;left:8%;width:26px;" viewBox="0 0 24 24" fill="currentColor"><path d="M12 21s-7-4.9-9.5-9C.7 8.8 2 5 5.5 5c2 0 3.3 1.3 4 2.3.7-1 2-2.3 4-2.3 3.5 0 4.8 3.8 3 7-2.5 4.1-9.5 9-9.5 9z"/></svg>
+        <svg style="bottom:16%;right:10%;width:22px;transform:rotate(30deg);" viewBox="0 0 24 24" fill="currentColor"><path d="M12 21s-7-4.9-9.5-9C.7 8.8 2 5 5.5 5c2 0 3.3 1.3 4 2.3.7-1 2-2.3 4-2.3 3.5 0 4.8 3.8 3 7-2.5 4.1-9.5 9-9.5 9z"/></svg>
+        <svg style="top:50%;right:6%;width:18px;transform:rotate(-15deg);" viewBox="0 0 24 24" fill="currentColor"><path d="M12 21s-7-4.9-9.5-9C.7 8.8 2 5 5.5 5c2 0 3.3 1.3 4 2.3.7-1 2-2.3 4-2.3 3.5 0 4.8 3.8 3 7-2.5 4.1-9.5 9-9.5 9z"/></svg>
+      </div>
+      <h2>Siap ketemu kucing pertamamu?</h2>
+      <p>Keluar rumah, cari kucing di sekitar, kasih makan, dan abadikan. Meongdex-mu menunggu kartu pertama.</p>
+      <div class="cta-row">
+        <a class="btn" href="game/index.html" style="background:#fff;color:var(--terracotta-deep);">
+          <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9 8h6M9 12h6M9 16h3"/></svg>
+          Mulai sekarang
+        </a>
+        <a class="btn secondary" href="downloads/install-apk.html">Download APK</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== FOOTER ===== -->
+<footer>
+  <div class="wrap foot-row">
+    <a class="brand" href="#top">
+      <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <path d="M55 70 L38 28 L78 56 Z" fill="#E8804C"/>
+        <path d="M145 70 L162 28 L122 56 Z" fill="#E8804C"/>
+        <ellipse cx="100" cy="115" rx="62" ry="55" fill="#E8804C"/>
+        <ellipse cx="100" cy="128" rx="30" ry="24" fill="#FFF8ED"/>
+        <circle cx="82" cy="108" r="7.5" fill="#3A2E2A"/>
+        <circle cx="118" cy="108" r="7.5" fill="#3A2E2A"/>
+        <path d="M94 124 q6 6 12 0" stroke="#3A2E2A" stroke-width="3" fill="none" stroke-linecap="round"/>
+      </svg>
+      Meongdex
+    </a>
+    <div class="links">
+      <a href="game/index.html">Main game</a>
+      <a href="#cara">Cara main</a>
+      <a href="#install">Install APK</a>
+      <a href="#faq">FAQ</a>
+    </div>
+    <div class="copy">Temukan. Kasih makan. Koleksi.</div>
+  </div>
+</footer>
+
 </body>
 </html>

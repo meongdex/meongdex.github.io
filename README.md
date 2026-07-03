@@ -14,7 +14,7 @@ Temukan. Kasih Makan. Koleksi.
 | Fase | Status | Catatan |
 |------|--------|---------|
 | Fase 1 — MVP Inti | Selesai | Onboarding, beranda, alur temukan->makan->foto->verifikasi AI->kartu->Meongdex, persistensi IndexedDB, offline shell. |
-| Fase 2 — PWA + Landing + APK | Belum dimulai | Akan dikerjakan setelah Fase 1 lolos semua kriteria sukses. |
+| Fase 2 — PWA + Landing + APK | Selesai | Landing page lengkap (hero+fitur+screenshot+cara install+FAQ), PWA installable (manifest+SW+beforeinstallprompt), halaman instruksi APK. File APK siap-pakai menunggu satu kali generate via PWABuilder (lihat asumsi #12). |
 | Fase 3 — Fitur lanjutan | Belum dimulai | Menyusul di percakapan berikutnya. |
 
 ---
@@ -104,8 +104,10 @@ Berikut asumsi yang diambil karena tidak dijelaskan secara eksplisit, demi kelan
 7. **Id kartu**: format `MDX-001`, `MDX-002`, ... urut menaik.
 8. **Tidak ada peta visual di Fase 1** (lokasi disimpan sebagai data mentah koordinat). Peta hotspot "sarang kucing" pakai Leaflet dijadwalkan Fase 3.
 9. **Ikon**: dibuat sebagai SVG inline (maskot Si Oren) lalu dikonversi ke PNG via `sharp` — bukan emoji, bukan aset pihak ketiga berlisensi.
-10. **Landing page root** di Fase 1 hanya berupa pengarah sederhana ke `/game/`. Landing page lengkap (hero 2 kolom + 3 fitur + screenshot + cara install APK + FAQ) adalah pekerjaan Fase 2.
+10. **Landing page root** sekarang lengkap (Fase 2): hero 2 kolom + strip 3 fitur + 4 screenshot gameplay + cara install APK + FAQ + final CTA, semua on-brand dengan palet &amp; tipografi Meongdex.
 11. **Bahasa UI**: Bahasa Indonesia sehari-hari, nada aktif & ramah.
+12. **APK Android (Fase 2)**: spec menyebut PWABuilder.com sebagai metode pembuatan APK. PWABuilder adalah layanan web interaktif yang tidak bisa dijalankan headless di sandbox pengembangan ini, dan tooling Android SDK/bubblewrap tidak tersedia/terlalu berat di sini. Karena itu: (a) PWA Meongdex sudah **installable** secara native dari Chrome Android ("Instal aplikasi") tanpa APK — ini memenuhi kriteria inti "bisa di-install seperti app native"; (b) file `downloads/meongdex.apk` siap-pakai menunggu **satu kali generate** via PWABuilder.com (sekitar 2 menit, langkah lengkap di `downloads/install-apk.html`); tombol "Download APK Android" di landing menjuju halaman instruksi tersebut. Setelah APK dihasilkan & ditaruh di `downloads/meongdex.apk`, tombol bisa diarahkan langsung ke file. Asumsi ini didokumentasikan transparan sesuai aturan "tidak berhenti bertanya, catat asumsi di README".
+13. **Prompt install PWA**: event `beforeinstallprompt` ditangkap dan dipicu lewat menu Pengaturan > "Pasang sebagai aplikasi"; jika belum eligible, muncul instruksi pakai menu browser (atau Share > Add to Home Screen di iOS).
 
 ---
 
