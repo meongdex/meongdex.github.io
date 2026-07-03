@@ -20,6 +20,10 @@ const CONFIG = {
   PHOTO_MAX_EDGE: 1024,        // downscale foto sebelum disimpan
   PHOTO_QUALITY: 0.82,         // kualitas JPEG
   COTD_KEY: 'meongdex_cotd',
+  SESSION_WINDOW_MS: 30*60*1000, // 30 menit antar temuan = sesi sama
+  SESSION_BONUS_PER_CAT: 15,     // bonus XP per kucing tambahan dalam sesi
+  SESSION_BONUS_CAP: 60,         // maks bonus sesi per kucing
+  CHALLENGE_BONUS: 80,           // XP per tantangan selesai
 };
 
 const COLORS = [
@@ -29,6 +33,30 @@ const COLORS = [
   { id:'belang',label:'Belang',hex:'#C9A87C' },
   { id:'calico',label:'Calico',hex:'#E8804C' },
   { id:'lainnya',label:'Lainnya',hex:'#9b8b7e' },
+];
+
+// Jenis makanan (Fase 3): tiap makanan punya efek mood & bonus XP kecil
+const FOODS = [
+  { id:'snack',   label:'Snack ikan',  icon:'fish',  moodBoost:1, xpBonus:0,  color:'#4A9B8E' },
+  { id:'wet',     label:'Wet food',    icon:'bowl',  moodBoost:2, xpBonus:5,  color:'#E8804C' },
+  { id:'dry',     label:'Dry food',    icon:'kibble',moodBoost:1, xpBonus:3,  color:'#D4AF37' },
+  { id:'treat',   label:'Treat special',icon:'star', moodBoost:3, xpBonus:10, color:'#C9652F' },
+];
+
+// Tantangan Foto Kreatif (Fase 3): auto-check saat saveCat berdasarkan
+// properti kucing (warna, rarity, verifiedByAI, jam temuan, dll).
+// Tantangan subjektif (yg butuh konfirmasi pemain) ditandai manual:true.
+const CHALLENGES = [
+  { id:'first',      label:'Kucing pertama', desc:'Simpan kucing pertamamu ke Meongdex.', badge:'Langkah Awal', check:(c)=>true },
+  { id:'rare',       label:'Pemburu langka', desc:'Temukan 1 kucing berkelangkaan langka.', badge:'Pemburu Emas', check:(c)=>c.rarity==='langka' },
+  { id:'oren',       label:'Sahabat oren',   desc:'Koleksi 3 kucing berwarna oren.', badge:'Sahabat Oren', check:(c,all)=>all.filter(x=>x.color==='oren').length>=3 },
+  { id:'hitam',      label:'Mata dalam malam',desc:'Temukan 1 kucing hitam.', badge:'Malam', check:(c)=>c.color==='hitam' },
+  { id:'calico',     label:'Bintang tiga warna',desc:'Temukan 1 kucing calico.', badge:'Calico', check:(c)=>c.color==='calico' },
+  { id:'night',      label:'Buruh malam',    desc:'Temukan kucing setelah jam 9 malam.', badge:'Buruh Malam', check:(c)=>{ const h=new Date(c.date).getHours(); return h>=21||h<5; } },
+  { id:'morning',    label:'Penyapa pagi',   desc:'Temukan kucing sebelum jam 8 pagi.', badge:'Penyapa Pagi', check:(c)=>{ const h=new Date(c.date).getHours(); return h>=5&&h<8; } },
+  { id:'ai',         label:'Terverifikasi',  desc:'Simpan kucing yang lolos verifikasi AI.', badge:'Terverifikasi AI', check:(c)=>c.verifiedByAI },
+  { id:'five',       label:'Lima kucing',    desc:'Koleksi 5 kucing di Meongdex.', badge:'Kolektor', check:(c,all)=>all.length>=5 },
+  { id:'ten',        label:'Sepuluh kucing', desc:'Koleksi 10 kucing di Meongdex.', badge:'Pemburu Sejati', check:(c,all)=>all.length>=10 },
 ];
 
 // flavor text lucu untuk kartu
@@ -59,6 +87,13 @@ const Store = {
       missionDate:'',
       cotdId:null,
       cotdDate:'',
+      // Fase 3
+      streak:0,
+      lastStreakDate:'',
+      sessionStart:0,
+      sessionCatCount:0,
+      completedChallenges:[],
+      soundEnabled:true,
     };
   },
   load(){
@@ -249,7 +284,7 @@ function renderHome(){
   const cats = currentCatsCache;
   $('#home-level').textContent = levelFromXp(player.xp);
   $('#stat-cats').textContent = cats.length;
-  $('#stat-fed').textContent = player.fed;
+  $('#stat-streak').textContent = player.streak || 0;
   $('#stat-xp').textContent = player.xp;
   const d = new Date();
   $('#home-date').textContent = d.toLocaleDateString('id-ID',{weekday:'long',day:'numeric',month:'long'});
@@ -258,8 +293,50 @@ function renderHome(){
   if(resetMission){ player.missionCount=0; player.missionDone=false; player.missionDate=todayKey(); Store.save(player); }
   $('#mission-count').textContent = `${player.missionCount} / ${CONFIG.MISSION_GOAL}`;
   $('#mission-bar').style.width = Math.min(100, (player.missionCount/CONFIG.MISSION_GOAL)*100) + '%';
+  // sesi berburu
+  renderSession();
+  // tantangan
+  renderChallengesCard();
   // kucing hari ini
   renderCotd(cats);
+}
+
+function renderSession(){
+  const wrap = $('#home-session');
+  if(!wrap) return;
+  const now = Date.now();
+  const active = player.sessionStart && (now - player.sessionStart) < CONFIG.SESSION_WINDOW_MS && player.sessionCatCount >= 2;
+  if(!active){ wrap.classList.add('hide'); return; }
+  wrap.classList.remove('hide');
+  $('#session-title').textContent = `${player.sessionCatCount} kucing dalam sesi ini`;
+  const dots = $('#session-dots'); dots.innerHTML='';
+  for(let i=0;i<Math.min(player.sessionCatCount,6);i++){
+    dots.appendChild(el('span',{class:'dot'}));
+  }
+  if(player.sessionCatCount > 6){
+    dots.appendChild(el('span',{class:'more'}, '+'+(player.sessionCatCount-6)));
+  }
+}
+
+function renderChallengesCard(){
+  const wrap = $('#home-challenges');
+  if(!wrap) return;
+  const done = player.completedChallenges || [];
+  $('#ch-title').textContent = `${done.length} / ${CHALLENGES.length} selesai`;
+  // cari tantangan berikutnya yang belum selesai
+  const next = CHALLENGES.find(c=> !done.includes(c.id));
+  if(next){
+    $('#ch-next').textContent = next.desc;
+  } else {
+    $('#ch-next').textContent = 'Semua tantangan selesai. Kamu pemburu sejati!';
+  }
+  // preview badge chips (3 selesai + sisa kosong)
+  const preview = $('#ch-preview'); preview.innerHTML='';
+  CHALLENGES.slice(0,5).forEach(ch=>{
+    const isDone = done.includes(ch.id);
+    const chip = el('span',{class:'ch-mini'+(isDone?' done':'')}, isDone ? ch.badge : '—');
+    preview.appendChild(chip);
+  });
 }
 function renderCotd(cats){
   const wrap = $('#home-cotd');
@@ -332,10 +409,83 @@ function initFeed(){
   $('#feed-meter').style.width = '0%';
   $('#feed-mood').textContent = MOODS[0];
   $('#feed-cat').classList.remove('happy','eating');
-  $('#feed-hint').textContent = 'Tahan tombol untuk mengisi kekuatan lemparan, lepas untuk melempar.';
+  $('#feed-hint').textContent = 'Pilih makanan, lalu tahan tombol untuk mengisi daya lemparan.';
   $('#btn-throw').textContent = '';
   $('#btn-throw').insertAdjacentHTML('afterbegin',
     '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><path d="M12 3.5c-1.6 2-1.6 15 0 17M12 3.5c1.6 2 1.6 15 0 17M4.5 9h15M4.5 15h15"/></svg> Tahan untuk isi daya');
+  renderFoodPicker();
+}
+
+let selectedFood = 'snack';
+
+function renderFoodPicker(){
+  const wrap = $('#feed-foods');
+  if(!wrap) return;
+  wrap.innerHTML='';
+  FOODS.forEach(f=>{
+    const b = el('button',{class:'food-opt'+(f.id===selectedFood?' active':''), 'data-food':f.id, onclick:()=>{
+      selectedFood = f.id;
+      renderFoodPicker();
+    }});
+    b.appendChild(el('span',{class:'fico',style:`background:${f.color}22;color:${f.color};`}, [foodIconSvg(f.icon)]));
+    b.appendChild(el('span',{class:'fn'}, f.label));
+    if(f.xpBonus>0) b.appendChild(el('span',{class:'fx'}, `+${f.xpBonus} XP`));
+    wrap.appendChild(b);
+  });
+}
+
+function foodIconSvg(kind){
+  const s='viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"';
+  if(kind==='fish') return `<svg ${s}><path d="M3 12c0-2 2-4 5-4 5 0 9 3 13 4-4 1-8 4-13 4-3 0-5-2-5-4z"/><path d="M3 12l-1-2M3 12l-1 2"/><circle cx="8" cy="11" r="1"/></svg>`;
+  if(kind==='bowl') return `<svg ${s}><path d="M3 11h18l-2 7a2 2 0 0 1-2 1H7a2 2 0 0 1-2-1z"/><path d="M7 7c0-1 1-2 2-2M12 7c0-1 1-2 2-2M17 7c0-1 1-2 2-2"/></svg>`;
+  if(kind==='kibble') return `<svg ${s}><circle cx="7" cy="10" r="2.5"/><circle cx="14" cy="8" r="2"/><circle cx="16" cy="14" r="2.5"/><circle cx="9" cy="15" r="2"/></svg>`;
+  if(kind==='star') return `<svg ${s}><path d="M12 2l2.6 6.1L21 9l-5 4.4L17.4 20 12 16.6 6.6 20 8 13.4 3 9l6.4-.9L12 2z"/></svg>`;
+  return `<svg ${s}><circle cx="12" cy="12" r="8"/></svg>`;
+}
+
+// --- Efek suara dengkuran (Web Audio API, sintetis, tanpa file) ---
+let audioCtx = null;
+function getPurrAudio(){
+  if(!audioCtx){
+    try{ audioCtx = new (window.AudioContext||window.webkitAudioContext)(); }catch(e){ return null; }
+  }
+  return audioCtx;
+}
+function playPurr(durationMs=1800){
+  if(!player.soundEnabled) return;
+  const ctx = getPurrAudio(); if(!ctx) return;
+  if(ctx.state==='suspended') ctx.resume();
+  const now = ctx.currentTime;
+  const master = ctx.createGain();
+  master.gain.setValueAtTime(0, now);
+  master.gain.linearRampToValueAtTime(0.18, now+0.15);
+  master.gain.setValueAtTime(0.18, now + durationMs/1000 - 0.25);
+  master.gain.linearRampToValueAtTime(0, now + durationMs/1000);
+  master.connect(ctx.destination);
+  const osc = ctx.createOscillator();
+  osc.type='sine'; osc.frequency.setValueAtTime(28, now);
+  const oscGain = ctx.createGain(); oscGain.gain.value=0.7;
+  osc.connect(oscGain); oscGain.connect(master);
+  const lfo = ctx.createOscillator(); lfo.type='sine'; lfo.frequency.value=6;
+  const lfoGain = ctx.createGain(); lfoGain.gain.value=6;
+  lfo.connect(lfoGain); lfoGain.connect(osc.frequency);
+  const osc2 = ctx.createOscillator(); osc2.type='triangle'; osc2.frequency.value=56;
+  const osc2Gain = ctx.createGain(); osc2Gain.gain.value=0.25;
+  osc2.connect(osc2Gain); osc2Gain.connect(master);
+  osc.start(now); lfo.start(now); osc2.start(now);
+  osc.stop(now + durationMs/1000); lfo.stop(now + durationMs/1000); osc2.stop(now + durationMs/1000);
+}
+function playChime(){
+  if(!player.soundEnabled) return;
+  const ctx = getPurrAudio(); if(!ctx) return;
+  if(ctx.state==='suspended') ctx.resume();
+  const now = ctx.currentTime;
+  [880, 1320].forEach((freq,i)=>{
+    const o = ctx.createOscillator(); o.type='sine'; o.frequency.value=freq;
+    const g = ctx.createGain(); g.gain.setValueAtTime(0,now+i*0.08); g.gain.linearRampToValueAtTime(0.12,now+i*0.08+0.02); g.gain.exponentialRampToValueAtTime(0.001, now+i*0.08+0.3);
+    o.connect(g); g.connect(ctx.destination);
+    o.start(now+i*0.08); o.stop(now+i*0.08+0.35);
+  });
 }
 
 const throwBtn = $('#btn-throw');
@@ -386,6 +536,7 @@ function doThrow(power){
   setTimeout(()=>{
     catEl.classList.add('eating');
     $('#feed-mood').textContent = MOODS[3];
+    playPurr(1600); // efek suara dengkuran
   }, 850);
   setTimeout(()=>{
     catEl.classList.remove('eating');
@@ -562,6 +713,7 @@ async function buildNewCard(){
     color: selectedColor,
     rarity,
     quote,
+    foodUsed: selectedFood,
     verifiedByAI: $('#verify-tag').classList.contains('err') ? false : ($('#verify-tag').classList.contains('warn') ? false : true),
   };
   selectedColor = 'lainnya'; // reset pilihan untuk cat berikutnya
@@ -638,35 +790,94 @@ async function saveCat(){
     pendingCat.color = selectedColor;
     const isRare = selectedColor==='calico' ? true : (pendingCat.rarity==='langka');
     pendingCat.rarity = isRare ? 'langka' : 'biasa';
+    // simpan makanan yang dipakai (dari feed)
+    pendingCat.foodUsed = pendingCat.foodUsed || 'snack';
     // jika nama kosong, default
     if(!pendingCat.name || pendingCat.name.startsWith('Kucing Tanpa Nama')){
       // biarkan default
     }
     await addCat(pendingCat);
+    // refresh cache SEBELUM cek challenge (butuh data terbaru)
+    currentCatsCache = await allCats();
     // update stat
     const oldLevel = levelFromXp(player.xp);
     let gain = CONFIG.XP_PER_CAT + (pendingCat.rarity==='langka'?CONFIG.XP_RARE_BONUS:0);
+    // bonus makanan
+    const food = FOODS.find(f=>f.id===pendingCat.foodUsed);
+    if(food && food.xpBonus){ gain += food.xpBonus; }
     player.xp += gain;
     player.fed += 1;
-    // misi
-    if(!player.missionDone && player.missionDate===todayKey()){
+
+    // --- Sesi Berburu (Fase 3) ---
+    const now = Date.now();
+    let sessionBonus = 0;
+    let sessionCount = 1;
+    if(player.sessionStart && (now - player.sessionStart) < CONFIG.SESSION_WINDOW_MS){
+      player.sessionCatCount += 1;
+      sessionCount = player.sessionCatCount;
+      sessionBonus = Math.min(CONFIG.SESSION_BONUS_CAP, (sessionCount-1) * CONFIG.SESSION_BONUS_PER_CAT);
+      player.xp += sessionBonus;
+      gain += sessionBonus;
+    } else {
+      player.sessionStart = now;
+      player.sessionCatCount = 1;
+    }
+
+    // --- Streak harian (Fase 3) ---
+    const today = todayKey();
+    if(player.lastStreakDate !== today){
+      if(player.lastStreakDate){
+        // cek apakah kemarin
+        const yest = new Date(); yest.setDate(yest.getDate()-1);
+        const yestKey = `${yest.getFullYear()}-${yest.getMonth()+1}-${yest.getDate()}`;
+        if(player.lastStreakDate === yestKey){ player.streak += 1; }
+        else { player.streak = 1; }
+      } else {
+        player.streak = 1;
+      }
+      player.lastStreakDate = today;
+    }
+
+    // --- Tantangan Foto Kreatif (Fase 3) ---
+    const newlyCompleted = [];
+    CHALLENGES.forEach(ch=>{
+      if(player.completedChallenges.includes(ch.id)) return;
+      try{
+        if(ch.check(pendingCat, currentCatsCache)){
+          player.completedChallenges.push(ch.id);
+          newlyCompleted.push(ch);
+          player.xp += CONFIG.CHALLENGE_BONUS;
+          gain += CONFIG.CHALLENGE_BONUS;
+        }
+      }catch(e){}
+    });
+
+    // --- Misi harian (existing) ---
+    if(!player.missionDone && player.missionDate===today){
       player.missionCount += 1;
       if(player.missionCount >= CONFIG.MISSION_GOAL){
         player.missionDone = true;
         player.xp += CONFIG.MISSION_BONUS;
         gain += CONFIG.MISSION_BONUS;
       }
-    } else if(player.missionDate!==todayKey()){
-      player.missionDate = todayKey(); player.missionCount=1; player.missionDone=false;
+    } else if(player.missionDate!==today){
+      player.missionDate = today; player.missionCount=1; player.missionDone=false;
     }
     Store.save(player);
-    // refresh cache
-    currentCatsCache = await allCats();
     const newLevel = levelFromXp(player.xp);
-    // toast
-    toast(`Nomor ${pendingCat.id} terdaftar di Meongdex-mu!`, pendingCat.rarity==='langka'?'gold':'success', ICONS.star);
+
+    // --- Toast rangkaian (simpan ref sebelum null) ---
+    const savedCat = pendingCat;
     pendingCat = null;
     btn.disabled = false;
+    toast(`Nomor ${savedCat.id} terdaftar di Meongdex-mu!`, savedCat.rarity==='langka'?'gold':'success', ICONS.star);
+    playChime();
+    if(sessionBonus > 0){
+      setTimeout(()=> toast(`Bonus sesi berburu: +${sessionBonus} XP (${sessionCount} kucing)`, 'success', ICONS.paw), 700);
+    }
+    newlyCompleted.forEach((ch, i)=>{
+      setTimeout(()=> toast(`Tantangan selesai: ${ch.label} (+${CONFIG.CHALLENGE_BONUS} XP)`, 'gold', ICONS.star), 1100 + i*900);
+    });
     // level up?
     if(newLevel > oldLevel){
       setTimeout(()=> showLevelUp(newLevel), 800);
@@ -1211,6 +1422,43 @@ window.addEventListener('appinstalled', ()=>{
   deferredPrompt = null;
   toast('Meongdex terpasang. Cek layar utamamu!','success',ICONS.check);
 });
+$('#set-sound').addEventListener('click', ()=>{
+  player.soundEnabled = !player.soundEnabled;
+  Store.save(player);
+  $('#sound-status').textContent = player.soundEnabled ? 'Aktif (dengkuran & chime)' : 'Dimatikan';
+  if(player.soundEnabled){
+    playChime();
+    toast('Efek suara aktif','',ICONS.check);
+  } else {
+    toast('Efek suara dimatikan','warn',ICONS.warn);
+  }
+});
+
+// challenges card -> buka sheet daftar tantangan
+$('#home-challenges').addEventListener('click', openChallengesSheet);
+
+function openChallengesSheet(){
+  const content = el('div');
+  const done = player.completedChallenges || [];
+  let html = `<h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#D4AF37" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l2.6 6.1L21 9l-5 4.4L17.4 20 12 16.6 6.6 20 8 13.4 3 9l6.4-.9L12 2z"/></svg> Tantangan Foto Kreatif</h3>
+  <p>${done.length} dari ${CHALLENGES.length} tantangan selesai. Tiap tantangan memberi +${CONFIG.CHALLENGE_BONUS} XP &amp; badge khusus.</p>
+  <div class="ch-list">`;
+  CHALLENGES.forEach(ch=>{
+    const isDone = done.includes(ch.id);
+    html += `<div class="ch-item${isDone?' done':''}">
+      <div class="ch-ico">${isDone
+        ? '<svg viewBox="0 0 24 24" fill="none" stroke="#D4AF37" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>'
+        : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v4M12 16h.01"/></svg>'}</div>
+      <div class="ch-tx"><div class="ch-l">${ch.label}</div><div class="ch-d">${ch.desc}</div></div>
+      ${isDone ? `<span class="badge-chip">${ch.badge}</span>` : `<span class="ch-xp">+${CONFIG.CHALLENGE_BONUS}</span>`}
+    </div>`;
+  });
+  html += `</div>
+  <button class="btn block mt-16" onclick="document.getElementById('overlay').classList.remove('active')">Tutup</button>`;
+  content.innerHTML = html;
+  openSheet(content);
+}
+
 $('#set-install').addEventListener('click', async ()=>{
   if(deferredPrompt){
     deferredPrompt.prompt();

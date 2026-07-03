@@ -656,3 +656,77 @@ main{flex:1;display:flex;flex-direction:column;position:relative;overflow:hidden
 .sheet h3{display:flex;align-items:center;gap:8px;}
 .sheet .share-section{margin-top:8px;}
 .sheet .preview-note{font-size:11.5px;color:var(--text-mute);font-style:italic;margin-bottom:10px;}
+
+/* ---------- 27. Food picker (Fase 3) ---------- */
+.food-picker{display:flex;gap:8px;margin:0 0 12px;overflow-x:auto;padding-bottom:6px;-ms-overflow-style:none;scrollbar-width:none;}
+.food-picker::-webkit-scrollbar{display:none;}
+.food-opt{
+  flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:5px;
+  background:var(--paper);border:2px solid var(--line);border-radius:var(--radius);
+  padding:10px 12px;min-width:78px;cursor:pointer;transition:all .15s ease;
+}
+.food-opt:active{transform:scale(.96);}
+.food-opt .fico{width:34px;height:34px;border-radius:10px;display:grid;place-items:center;}
+.food-opt .fico svg{width:18px;height:18px;}
+.food-opt .fn{font-size:11.5px;font-weight:700;font-family:'Fredoka',sans-serif;color:var(--charcoal);white-space:nowrap;}
+.food-opt .fx{font-size:9.5px;font-family:'JetBrains Mono',monospace;color:var(--terracotta-deep);font-weight:700;}
+.food-opt.active{border-color:var(--terracotta);background:rgba(232,128,76,.08);box-shadow:0 4px 10px -4px rgba(232,128,76,.3);}
+
+/* ---------- 28. Session banner (Fase 3) ---------- */
+.home-card.session{
+  background:linear-gradient(135deg,rgba(74,155,142,.14),rgba(74,155,142,.05));
+  border-color:rgba(74,155,142,.3);
+}
+.home-card.session h4{color:var(--teal-deep);}
+.home-card.session p{color:var(--teal-deep);opacity:.85;}
+.session-dots{display:flex;gap:5px;align-items:center;margin-top:8px;}
+.session-dots .dot{
+  width:11px;height:11px;border-radius:999px;background:var(--teal);
+  box-shadow:0 0 0 3px rgba(74,155,142,.18);
+  animation:dotPop .3s ease both;
+}
+.session-dots .dot:nth-child(2){animation-delay:.05s;}
+.session-dots .dot:nth-child(3){animation-delay:.1s;}
+.session-dots .dot:nth-child(4){animation-delay:.15s;}
+.session-dots .dot:nth-child(5){animation-delay:.2s;}
+.session-dots .dot:nth-child(6){animation-delay:.25s;}
+@keyframes dotPop{from{transform:scale(0);opacity:0;}to{transform:scale(1);opacity:1;}}
+.session-dots .more{font-size:11px;font-family:'JetBrains Mono',monospace;color:var(--teal-deep);font-weight:700;margin-left:4px;}
+
+/* ---------- 29. Challenges card & list (Fase 3) ---------- */
+.home-card.challenges{
+  background:linear-gradient(135deg,rgba(212,175,55,.1),rgba(212,175,55,.02));
+  border-color:rgba(212,175,55,.3);
+}
+.home-card.challenges h4{color:#8a6612;}
+.home-card.challenges p{color:var(--text-soft);}
+.ch-preview{display:flex;gap:5px;flex-wrap:wrap;margin-top:10px;}
+.ch-mini{
+  font-size:10px;font-family:'JetBrains Mono',monospace;font-weight:700;
+  padding:4px 9px;border-radius:999px;
+  background:rgba(120,80,40,.08);color:var(--text-mute);border:1px dashed var(--line);
+}
+.ch-mini.done{
+  background:rgba(212,175,55,.18);color:#8a6612;border:1px solid rgba(212,175,55,.35);border-style:solid;
+}
+
+.ch-list{display:flex;flex-direction:column;gap:8px;margin-top:6px;}
+.ch-item{
+  display:flex;gap:12px;align-items:center;background:var(--paper);border:1px solid var(--line);
+  border-radius:var(--radius);padding:11px 12px;transition:transform .15s ease;
+}
+.ch-item.done{background:rgba(212,175,55,.06);border-color:rgba(212,175,55,.25);}
+.ch-item .ch-ico{
+  width:34px;height:34px;flex-shrink:0;border-radius:10px;display:grid;place-items:center;
+  background:rgba(120,80,40,.08);color:var(--text-mute);
+}
+.ch-item.done .ch-ico{background:rgba(212,175,55,.18);color:var(--gold);}
+.ch-item .ch-ico svg{width:18px;height:18px;}
+.ch-item .ch-tx{flex:1;min-width:0;}
+.ch-item .ch-l{font-size:13.5px;font-weight:600;font-family:'Fredoka',sans-serif;color:var(--charcoal);}
+.ch-item .ch-d{font-size:12px;color:var(--text-soft);line-height:1.4;margin-top:1px;}
+.ch-item .ch-xp{font-size:11px;font-family:'JetBrains Mono',monospace;color:var(--terracotta-deep);font-weight:700;}
+
+/* ---------- 30. Sound icon states ---------- */
+.set-item.muted .ico{opacity:.5;}
+.set-item.muted .ico svg path:nth-child(2){opacity:.3;}
