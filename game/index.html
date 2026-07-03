@@ -368,6 +368,32 @@
       <div id="journal-list"></div>
     </section>
 
+    <!-- ================= PETA HOTSPOT ================= -->
+    <section class="screen" data-screen="map" id="screen-map">
+      <div class="map-head">
+        <h2>Peta Sarang Kucing</h2>
+        <span class="count" id="map-count">0 titik</span>
+      </div>
+      <div class="weather-strip hide" id="weather-strip">
+        <div class="w-icon" id="w-icon"></div>
+        <div class="w-tx">
+          <div class="w-temp" id="w-temp">—</div>
+          <div class="w-desc" id="w-desc">Cuaca di lokasimu</div>
+        </div>
+        <div class="w-flavor" id="w-flavor"></div>
+      </div>
+      <div class="map-wrap" id="map-wrap">
+        <div id="leaflet-map"></div>
+        <div class="map-empty" id="map-empty">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#C9652F" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s7-6.2 7-11.5C19 5.4 15.9 3 12 3S5 5.4 5 9.5 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg>
+          <h3>Belum ada titik di peta</h3>
+          <p>Temukan kucing dengan lokasi aktif, dan sarangnya akan tertempel di peta ini.</p>
+          <button class="btn sm" id="map-grant">Aktifkan lokasi</button>
+        </div>
+      </div>
+      <p class="map-note" id="map-note">Peta membutuhkan koneksi internet pada kunjungan pertama. Titik sarang disimpan lokal di perangkatmu.</p>
+    </section>
+
     <!-- ================= PENGATURAN ================= -->
     <section class="screen" data-screen="settings" id="screen-settings">
       <div class="screen-head"><h2>Pengaturan</h2></div>
@@ -428,6 +454,10 @@
       <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h13a3 3 0 0 1 3 3v13l-3-2-3 2-3-2-3 2-3-2-1 2V7a3 3 0 0 1 3-3z"/><path d="M8 9h8M8 13h6"/></svg>
       Jurnal
     </button>
+    <button data-nav="map" aria-label="Peta sarang kucing">
+      <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4l-6 2v14l6-2 6 2 6-2V4l-6 2-6-2z"/><path d="M9 4v14M15 6v14"/></svg>
+      Peta
+    </button>
     <button data-nav="settings" aria-label="Pengaturan">
       <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
       Atur
@@ -448,6 +478,8 @@
 <script src="https://cdn.jsdelivr.net/npm/idb@8/build/umd.js" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.22.0/dist/tf.min.js" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd@2.2.3/dist/coco-ssd.min.js" defer></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+<script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin="" defer></script>
 <script src="app.js" defer></script>
 </body>
 </html>

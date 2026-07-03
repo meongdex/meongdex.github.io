@@ -730,3 +730,67 @@ main{flex:1;display:flex;flex-direction:column;position:relative;overflow:hidden
 /* ---------- 30. Sound icon states ---------- */
 .set-item.muted .ico{opacity:.5;}
 .set-item.muted .ico svg path:nth-child(2){opacity:.3;}
+
+/* ---------- 31. Peta hotspot (Leaflet) ---------- */
+.map-head{display:flex;justify-content:space-between;align-items:baseline;margin:4px 0 12px;}
+.map-head h2{font-size:20px;}
+.map-head .count{font-size:12px;font-family:'JetBrains Mono',monospace;color:var(--teal-deep);background:rgba(74,155,142,.12);padding:5px 11px;border-radius:999px;font-weight:700;}
+.map-wrap{
+  position:relative;flex:1;border-radius:var(--radius-lg);overflow:hidden;
+  border:1px solid var(--line);box-shadow:var(--shadow);min-height:340px;background:var(--cream-deep);
+}
+#leaflet-map{width:100%;height:100%;min-height:340px;}
+.leaflet-container{background:#EFE3CC;font-family:'Plus Jakarta Sans',sans-serif;}
+.leaflet-popup-content-wrapper{border-radius:14px;background:var(--paper);box-shadow:var(--shadow);border:1px solid var(--line);}
+.leaflet-popup-content{margin:10px 12px;font-size:13px;color:var(--charcoal);}
+.leaflet-popup-content b{font-family:'Fredoka',sans-serif;font-size:14px;color:var(--terracotta-deep);}
+.leaflet-popup-content .pop-thumb{width:100%;height:90px;border-radius:8px;object-fit:cover;margin-bottom:6px;}
+.leaflet-popup-content .pop-meta{font-size:11px;color:var(--text-mute);font-family:'JetBrains Mono',monospace;margin-top:4px;}
+.leaflet-bar a{background:var(--paper);color:var(--charcoal);border-color:var(--line);}
+.leaflet-bar a:hover{background:var(--cream-deep);}
+.cat-marker{
+  width:34px;height:34px;border-radius:999px 999px 999px 0;background:var(--terracotta);
+  border:3px solid #fff;box-shadow:0 4px 10px -3px rgba(0,0,0,.4);transform:rotate(-45deg);
+  display:grid;place-items:center;cursor:pointer;
+}
+.cat-marker.rare{background:var(--gold);}
+.cat-marker .inner{transform:rotate(45deg);width:18px;height:18px;}
+.map-empty{
+  position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  text-align:center;gap:10px;padding:30px 22px;background:var(--cream);z-index:5;
+}
+.map-empty svg{width:60px;}
+.map-empty h3{font-size:18px;}
+.map-empty p{font-size:13px;color:var(--text-soft);line-height:1.5;max-width:280px;}
+.map-note{font-size:11.5px;color:var(--text-mute);margin-top:10px;font-style:italic;text-align:center;}
+
+/* ---------- 32. Weather strip (Open-Meteo flavor) ---------- */
+.weather-strip{
+  display:flex;align-items:center;gap:12px;background:var(--paper);border:1px solid var(--line);
+  border-radius:var(--radius);padding:10px 14px;margin-bottom:12px;box-shadow:var(--shadow-sm);
+}
+.weather-strip .w-icon{width:38px;height:38px;flex-shrink:0;display:grid;place-items:center;}
+.weather-strip .w-icon svg{width:30px;height:30px;}
+.weather-strip .w-tx{flex-shrink:0;}
+.weather-strip .w-temp{font-family:'Fredoka',sans-serif;font-weight:700;font-size:20px;color:var(--charcoal);line-height:1;}
+.weather-strip .w-desc{font-size:11px;color:var(--text-soft);font-family:'JetBrains Mono',monospace;margin-top:2px;}
+.weather-strip .w-flavor{flex:1;font-size:12px;color:var(--text-soft);font-style:italic;line-height:1.4;text-align:right;}
+
+/* ---------- 33. Cat mood variations (feed scene) ---------- */
+.cat-scene .cat{transition:filter .4s ease, transform .4s ease;}
+.cat-scene .cat.mood-happy{filter:saturate(1.1);}
+.cat-scene .cat.mood-love{animation:wiggle 1.2s ease-in-out infinite;}
+@keyframes wiggle{0%,100%{transform:rotate(0);}25%{transform:rotate(-3deg);}75%{transform:rotate(3deg);}}
+.cat-scene .cat.mood-excited{animation:bounce 0.6s ease-in-out infinite;}
+@keyframes bounce{0%,100%{transform:translateY(0);}50%{transform:translateY(-6px);}}
+.cat-scene .heart-float{
+  position:absolute;width:18px;height:18px;color:var(--terracotta);
+  animation:heartUp 1.4s ease-out forwards;pointer-events:none;
+}
+@keyframes heartUp{0%{transform:translateY(0) scale(.5);opacity:0;}20%{opacity:1;}100%{transform:translateY(-60px) scale(1.2);opacity:0;}}
+
+/* ---------- 34. 6-col bottom nav adjustment ---------- */
+@media (max-width:380px){
+  .bottom-nav button{font-size:9px;letter-spacing:.02em;}
+  .bottom-nav button .ico{width:20px;height:20px;}
+}

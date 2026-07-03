@@ -186,7 +186,7 @@ function el(tag, props={}, children=[]){
 /* ---------------------------------------------------------------------
    4. Navigasi screen
    --------------------------------------------------------------------- */
-const screenOrder = ['onboarding','home','perm-loc','feed','perm-cam','verify','card','dex','journal','settings'];
+const screenOrder = ['onboarding','home','perm-loc','feed','perm-cam','verify','card','dex','journal','map','settings'];
 let currentScreen = 'onboarding';
 
 function go(screen){
@@ -195,7 +195,7 @@ function go(screen){
   currentScreen = screen;
   $('#main').scrollTop = 0;
   // bottom nav aktif
-  const navMap = { home:'home', dex:'dex', settings:'settings', journal:'journal' };
+  const navMap = { home:'home', dex:'dex', settings:'settings', journal:'journal', map:'map' };
   $$('.bottom-nav button').forEach(b=>{
     const active = b.dataset.nav === navMap[screen] || (screen==='find' && b.dataset.nav==='find');
     b.classList.toggle('active', active);
@@ -204,6 +204,7 @@ function go(screen){
   if(screen==='home') renderHome();
   if(screen==='dex') renderDex();
   if(screen==='journal') renderJournal();
+  if(screen==='map') renderMap();
   if(screen==='settings') {/* statis */}
 }
 
@@ -532,7 +533,10 @@ function doThrow(power){
     { transform:`translate(${dx*0.5}px, ${dy-40}px) scale(1.2)`, opacity:1, offset:0.5 },
     { transform:`translate(${dx}px, ${dy}px) scale(0.4)`, opacity:0 },
   ], { duration:900, easing:'cubic-bezier(.3,.6,.5,1)' }).onfinish = ()=> fly.remove();
-  // cat bereaksi
+  // cat bereaksi — mood tergantung food + power
+  const food = FOODS.find(f=>f.id===selectedFood) || FOODS[0];
+  const moodClass = food.id==='treat' ? 'mood-love' : (food.id==='wet' ? 'mood-excited' : 'mood-happy');
+  const moodLabel = food.id==='treat' ? 'Jatuh hati' : (food.id==='wet' ? 'Gembira' : 'Senang');
   setTimeout(()=>{
     catEl.classList.add('eating');
     $('#feed-mood').textContent = MOODS[3];
@@ -540,9 +544,19 @@ function doThrow(power){
   }, 850);
   setTimeout(()=>{
     catEl.classList.remove('eating');
-    catEl.classList.add('happy');
-    $('#feed-mood').textContent = MOODS[4];
-    $('#feed-hint').textContent = 'Kucingnya suka! Saatnya foto.';
+    catEl.classList.add('happy', moodClass);
+    $('#feed-mood').textContent = moodLabel;
+    $('#feed-hint').textContent = `Kucingnya suka ${food.label.toLowerCase()}! Saatnya foto.`;
+    // heart float untuk treat
+    if(food.id==='treat'){
+      const scene = $('#feed-scene');
+      for(let i=0;i<3;i++){
+        const h = el('div',{class:'heart-float',style:`left:${50+i*12}%;top:40%;animation-delay:${i*0.2}s;`});
+        h.innerHTML = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 21s-7-4.9-9.5-9C.7 8.8 2 5 5.5 5c2 0 3.3 1.3 4 2.3.7-1 2-2.3 4-2.3 3.5 0 4.8 3.8 3 7-2.5 4.1-9.5 9-9.5 9z"/></svg>';
+        scene.appendChild(h);
+        setTimeout(()=> h.remove(), 1500);
+      }
+    }
   }, 1700);
   setTimeout(()=>{
     feeding = false;
@@ -1135,6 +1149,120 @@ async function renderJournal(){
     });
     list.appendChild(dayWrap);
   });
+}
+
+/* ---------------------------------------------------------------------
+   13b2. Peta hotspot sarang kucing (Leaflet)
+   --------------------------------------------------------------------- */
+let leafletMap = null;
+let leafletReady = false;
+
+async function renderMap(){
+  const cats = await allCats();
+  const withLoc = cats.filter(c=> c.lat!=null && c.lon!=null);
+  $('#map-count').textContent = `${withLoc.length} titik`;
+  const empty = $('#map-empty');
+  if(withLoc.length === 0){
+    empty.style.display = 'flex';
+    return;
+  }
+  empty.style.display = 'none';
+  if(typeof L === 'undefined'){
+    // Leaflet belum termuat (offline pertama kali). Tampilkan empty dengan catatan.
+    empty.style.display = 'flex';
+    empty.querySelector('h3').textContent = 'Peta belum siap';
+    empty.querySelector('p').textContent = 'Peta butuh internet untuk dimuat. Buka layar ini lagi saat online.';
+    return;
+  }
+  leafletReady = true;
+  // init map sekali
+  if(!leafletMap){
+    leafletMap = L.map('leaflet-map', { zoomControl:true, attributionControl:true });
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      attribution: '&copy; OpenStreetMap',
+    }).addTo(leafletMap);
+  }
+  // hitung bounds
+  const bounds = L.latLngBounds(withLoc.map(c=>[c.lat, c.lon]));
+  // tambah/update marker
+  leafletMap.eachLayer(l=>{ if(l instanceof L.Marker) leafletMap.removeLayer(l); });
+  withLoc.forEach(c=>{
+    const colorLabel = (COLORS.find(x=>x.id===c.color)||{}).label || c.color;
+    const icon = L.divIcon({
+      className: '',
+      html: `<div class="cat-marker${c.rarity==='langka'?' rare':''}" title="${escapeHtml(c.name)}"><svg class="inner" viewBox="0 0 24 24" fill="#fff"><path d="M12 21s-7-4.9-9.5-9C.7 8.8 2 5 5.5 5c2 0 3.3 1.3 4 2.3.7-1 2-2.3 4-2.3 3.5 0 4.8 3.8 3 7-2.5 4.1-9.5 9-9.5 9z"/></svg></div>`,
+      iconSize:[34,34],
+      iconAnchor:[17,34],
+      popupAnchor:[0,-32],
+    });
+    const m = L.marker([c.lat, c.lon], {icon}).addTo(leafletMap);
+    const d = new Date(c.date);
+    m.bindPopup(`<img class="pop-thumb" src="${c.photo}" alt="${escapeHtml(c.name)}"><b>${escapeHtml(c.name)}</b><br>#${c.id.replace('MDX-','')} · ${colorLabel} · ${c.rarity}<div class="pop-meta">${d.toLocaleDateString('id-ID',{day:'numeric',month:'short',year:'numeric'})}</div>`);
+    m.on('click', ()=> playChime());
+  });
+  // fit bounds dengan padding
+  leafletMap.fitBounds(bounds, { padding:[40,40], maxZoom:16 });
+  // invalidateSize supaya render benar setelah display flex
+  setTimeout(()=>{ if(leafletMap) leafletMap.invalidateSize(); }, 200);
+  // tampilkan cuaca di lokasi kucing terakhir
+  refreshWeatherForLastLoc();
+}
+
+$('#map-grant').addEventListener('click', ()=>{
+  go('perm-loc');
+});
+
+/* ---------------------------------------------------------------------
+   13b3. Flavor cuaca (Open-Meteo, gratis tanpa API key)
+   --------------------------------------------------------------------- */
+async function renderWeather(lat, lon){
+  const strip = $('#weather-strip');
+  if(!strip) return;
+  strip.classList.add('hide');
+  if(lat==null || lon==null) return;
+  try{
+    const r = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,weather_code&timezone=auto`);
+    if(!r.ok) return;
+    const data = await r.json();
+    const t = Math.round(data.current.temperature_2m);
+    const code = data.current.weather_code;
+    const {label, flavor, svg} = weatherInfo(code, t);
+    $('#w-icon').innerHTML = svg;
+    $('#w-temp').textContent = `${t}°C`;
+    $('#w-desc').textContent = label;
+    $('#w-flavor').textContent = flavor;
+    strip.classList.remove('hide');
+  }catch(e){
+    // offline / gagal: abaikan
+  }
+}
+
+function weatherInfo(code, t){
+  // WMO weather code -> label + flavor + icon SVG
+  let label='Cerah', flavor='', svg='';
+  if(code===0){ label='Cerah'; flavor = t>28?'Hari panas — kucing cari tempat teduh.':'Cuaca enak untuk berburu kucing.'; svg=sunSvg(); }
+  else if(code<=3){ label='Berawan'; flavor='Berawan tipis, kucing masih aktif keluar.'; svg=cloudSvg(); }
+  else if(code<=48){ label='Berkabut'; flavor='Kabut tipis — cari kucing dekat rumah hangat.'; svg=fogSvg(); }
+  else if(code<=67){ label='Hujan'; flavor='Hujan turun, kucing mungkin bersembunyi. Bawa payung.'; svg=rainSvg(); }
+  else if(code<=77){ label='Salju'; flavor='Salju? Kucing lokal pasti di dalam rumah.'; svg=snowSvg(); }
+  else if(code<=82){ label='Gerimis'; flavor='Gerimis ringan, mungkin masih ada kucing liar.'; svg=rainSvg(); }
+  else if(code<=99){ label='Badai'; flavor='Badai — lebih baik di dalam. Main Meongdex besok saja.'; svg=stormSvg(); }
+  else { label='Cerah'; svg=sunSvg(); }
+  return {label, flavor, svg};
+}
+function sunSvg(){ return `<svg viewBox="0 0 24 24" fill="none" stroke="#E8804C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4.5"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.5 1.5M17.5 17.5L19 19M5 19l1.5-1.5M17.5 6.5L19 5"/></svg>`; }
+function cloudSvg(){ return `<svg viewBox="0 0 24 24" fill="none" stroke="#8a7566" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 18a4 4 0 0 0 0-8 6 6 0 0 0-11 2 4 4 0 0 0 1 8h10z"/></svg>`; }
+function fogSvg(){ return `<svg viewBox="0 0 24 24" fill="none" stroke="#8a7566" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8h12M5 12h14M3 16h12M5 20h14"/></svg>`; }
+function rainSvg(){ return `<svg viewBox="0 0 24 24" fill="none" stroke="#4A9B8E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 14a4 4 0 0 0 0-8 6 6 0 0 0-11 2 4 4 0 0 0 1 8"/><path d="M8 18v2M12 18v3M16 18v2"/></svg>`; }
+function snowSvg(){ return `<svg viewBox="0 0 24 24" fill="none" stroke="#4A9B8E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 14a4 4 0 0 0 0-8 6 6 0 0 0-11 2 4 4 0 0 0 1 8"/><path d="M8 18l.01 0M12 19l.01 0M16 18l.01 0M10 21l.01 0M14 21l.01 0"/></svg>`; }
+function stormSvg(){ return `<svg viewBox="0 0 24 24" fill="none" stroke="#C9652F" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 14a4 4 0 0 0 0-8 6 6 0 0 0-11 2 4 4 0 0 0 1 8"/><path d="M13 14l-3 4h3l-2 3"/></svg>`; }
+
+// tampilkan cuaca di peta saat punya lokasi tersimpan terakhir
+async function refreshWeatherForLastLoc(){
+  const cats = await allCats();
+  const withLoc = cats.find(c=> c.lat!=null && c.lon!=null);
+  if(withLoc) renderWeather(withLoc.lat, withLoc.lon);
 }
 
 /* ---------------------------------------------------------------------
