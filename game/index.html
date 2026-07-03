@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#FFF8ED" />
+  <meta name="description" content="Meongdex — temukan kucing sungguhan di sekitarmu, kasih makan, foto, dan kumpulkan sebagai kartu di Meongdex-mu." />
+  <title>Meongdex</title>
+
+  <link rel="manifest" href="manifest.json" />
+  <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png" />
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="Meongdex" />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;1,500&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet" />
+
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+<div id="app">
+
+  <!-- status bar kosmetik -->
+  <div class="app-status" aria-hidden="true">
+    <span class="mono" id="clock">9:41</span>
+    <span class="row" style="gap:8px;">
+      <span class="sigs"><i></i><i></i><i></i><i></i></span>
+      <span class="bat"></span>
+    </span>
+  </div>
+
+  <main id="main">
+
+    <!-- ================= ONBOARDING ================= -->
+    <section class="screen onboard active" data-screen="onboarding" id="screen-onboarding">
+      <div class="onboard-mascot" id="onboard-mascot">
+        <!-- Si Oren -->
+        <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" aria-label="Maskot Si Oren">
+          <ellipse cx="100" cy="158" rx="58" ry="14" fill="rgba(58,46,42,0.10)"/>
+          <path d="M55 70 L38 28 L78 56 Z" fill="#E8804C"/>
+          <path d="M145 70 L162 28 L122 56 Z" fill="#E8804C"/>
+          <path d="M60 66 L48 42 L74 56 Z" fill="#C9652F" opacity="0.55"/>
+          <path d="M140 66 L152 42 L126 56 Z" fill="#C9652F" opacity="0.55"/>
+          <ellipse cx="100" cy="115" rx="62" ry="55" fill="#E8804C"/>
+          <path d="M45 100 q10 20 0 40" stroke="#C9652F" stroke-width="5" fill="none" stroke-linecap="round" opacity="0.7"/>
+          <path d="M155 100 q-10 20 0 40" stroke="#C9652F" stroke-width="5" fill="none" stroke-linecap="round" opacity="0.7"/>
+          <ellipse cx="100" cy="128" rx="30" ry="24" fill="#FFF8ED"/>
+          <circle cx="82" cy="108" r="7.5" fill="#3A2E2A"/>
+          <circle cx="118" cy="108" r="7.5" fill="#3A2E2A"/>
+          <circle cx="84.5" cy="105" r="2.4" fill="#fff"/>
+          <circle cx="120.5" cy="105" r="2.4" fill="#fff"/>
+          <path d="M96 120 q4 4 4 4 q0 0 4 -4" stroke="#3A2E2A" stroke-width="3" fill="none" stroke-linecap="round"/>
+          <path d="M100 120 v4" stroke="#3A2E2A" stroke-width="3" stroke-linecap="round"/>
+          <path d="M94 124 q6 6 12 0" stroke="#3A2E2A" stroke-width="3" fill="none" stroke-linecap="round"/>
+          <path d="M70 128 q-16 -2 -28 4M70 134 q-16 4 -28 10M130 128 q16 -2 28 4M130 134 q16 4 28 10" stroke="#3A2E2A" stroke-width="2" fill="none" stroke-linecap="round" opacity="0.85"/>
+          <path d="M60 155 Q100 178 140 155" stroke="#C9652F" stroke-width="6" fill="none" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <div class="onboard-copy">
+        <div class="dots" id="onboard-dots">
+          <span class="active"></span><span></span><span></span><span></span>
+        </div>
+        <h3 id="onboard-title">Halo, aku Si Oren!</h3>
+        <p id="onboard-text">Di luar sana banyak kucing yang belum kamu kenal. Yuk kita temukan, kasih makan, lalu abadikan mereka di Meongdex-mu.</p>
+        <div class="onboard-actions">
+          <button class="btn block" id="onboard-next">Lanjut</button>
+        </div>
+        <button class="skip" id="onboard-skip">Lewati pengenalan</button>
+      </div>
+    </section>
+
+    <!-- ================= BERANDA ================= -->
+    <section class="screen" data-screen="home" id="screen-home">
+      <div class="home-top">
+        <div>
+          <h3>Halo, pemburu kucing</h3>
+          <span class="date" id="home-date">—</span>
+        </div>
+        <div class="xp-pill" title="Level kamu">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#E8804C" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-label="Level"><path d="M12 2l2.6 6.1L21 9l-5 4.4L17.4 20 12 16.6 6.6 20 8 13.4 3 9l6.4-.9L12 2z"/></svg>
+          <span>Lv <b id="home-level">1</b></span>
+        </div>
+      </div>
+
+      <!-- kucing hari ini -->
+      <div class="cotd hide" id="home-cotd">
+        <div class="thumb" id="cotd-thumb"></div>
+        <div class="info">
+          <div class="t">Kucing Hari Ini</div>
+          <div class="n" id="cotd-name">—</div>
+          <div class="q" id="cotd-quote">—</div>
+        </div>
+      </div>
+
+      <div class="home-card">
+        <div class="radar"></div>
+        <div class="label">Radar kucing</div>
+        <h4>Ada kucing di dekatmu</h4>
+        <p>Radar mendeteksi pergerakan kucing di sekitarmu. Waktunya keluar dan berburu.</p>
+        <button class="btn block" id="btn-find">
+          <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-label="Cari"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+          Temukan Kucing
+        </button>
+      </div>
+
+      <div class="home-card mission">
+        <div class="label" style="color:#7a4a42;">Misi hari ini</div>
+        <h4>Beri makan 3 kucing</h4>
+        <p>Dapat bonus XP jejak emas tiap kali misi ini selesai.</p>
+        <div class="progress">
+          <div class="track"><i id="mission-bar"></i></div>
+          <span class="count" id="mission-count">0 / 3</span>
+        </div>
+      </div>
+
+      <div class="stat-row">
+        <div class="stat-box"><div class="num" id="stat-cats">0</div><div class="lbl">Kucing</div></div>
+        <div class="stat-box teal"><div class="num" id="stat-fed">0</div><div class="lbl">Diberi makan</div></div>
+        <div class="stat-box gold"><div class="num" id="stat-xp">0</div><div class="lbl">XP</div></div>
+      </div>
+    </section>
+
+    <!-- ================= IZIN LOKASI ================= -->
+    <section class="screen" data-screen="perm-loc" id="screen-perm-loc">
+      <div class="perm">
+        <div class="screen-head">
+          <button class="back" data-back="home" aria-label="Kembali">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#3A2E2A" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+          </button>
+          <h2>Kenapa butuh lokasi?</h2>
+        </div>
+        <div class="perm-hero">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#E8804C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-label="Lokasi"><path d="M12 21s7-6.2 7-11.5C19 5.4 15.9 3 12 3S5 5.4 5 9.5C5 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg>
+          <h3>Catat jejak temuanmu</h3>
+          <p>Meongdex menyimpan lokasi setiap kucing yang kamu temui, supaya kamu bisa tahu di mana saja kamu sudah berburu. Lokasi hanya tersimpan di perangkatmu, tidak dikirim ke mana pun.</p>
+        </div>
+        <div class="perm-list">
+          <div class="perm-item">
+            <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s7-6.2 7-11.5C19 5.4 15.9 3 12 3S5 5.4 5 9.5 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg></span>
+            <div class="tx"><h5>Disimpan lokal</h5><p>Koordinat hanya ada di ponselmu, aman.</p></div>
+          </div>
+          <div class="perm-item">
+            <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></span>
+            <div class="tx"><h5>Tanpa akun, tanpa server</h5><p>Tidak ada data yang diunggah saat kamu berburu.</p></div>
+          </div>
+        </div>
+        <button class="btn block" id="btn-grant-loc">
+          <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s7-6.2 7-11.5C19 5.4 15.9 3 12 3S5 5.4 5 9.5 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg>
+          Izinkan &amp; mulai cari
+        </button>
+        <button class="ghost btn block" id="btn-skip-loc">Lanjut tanpa lokasi</button>
+      </div>
+    </section>
+
+    <!-- ================= KASIH MAKAN ================= -->
+    <section class="screen" data-screen="feed" id="screen-feed">
+      <div class="screen-head">
+        <button class="back" data-back="home" aria-label="Kembali">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#3A2E2A" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+        </button>
+        <h2>Kasih Makan</h2>
+        <span class="pill" id="feed-step">Langkah 1/3</span>
+      </div>
+      <div class="locate-badge" id="feed-loc-badge">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3"/></svg>
+        <span id="feed-loc-text">lokasi tercatat</span>
+      </div>
+      <div class="cat-scene" id="feed-scene">
+        <div class="ground"></div>
+        <div class="mood-badge"><span class="dot"></span><span id="feed-mood">Penasaran</span></div>
+        <!-- kucing scene (oranye, duduk) -->
+        <svg class="cat" id="feed-cat" viewBox="0 0 160 150" aria-label="Kucing">
+          <ellipse cx="80" cy="138" rx="50" ry="8" fill="rgba(58,46,42,0.12)"/>
+          <!-- ekor -->
+          <path d="M120 110 Q150 100 145 70 Q142 55 130 58" stroke="#E8804C" stroke-width="11" fill="none" stroke-linecap="round"/>
+          <!-- badan -->
+          <ellipse cx="80" cy="110" rx="46" ry="34" fill="#E8804C"/>
+          <!-- kaki depan -->
+          <ellipse cx="66" cy="132" rx="8" ry="10" fill="#E8804C"/>
+          <ellipse cx="94" cy="132" rx="8" ry="10" fill="#E8804C"/>
+          <!-- kepala -->
+          <ellipse cx="80" cy="68" rx="36" ry="32" fill="#E8804C"/>
+          <!-- telinga -->
+          <path d="M52 48 L44 22 L70 44 Z" fill="#E8804C"/>
+          <path d="M108 48 L116 22 L90 44 Z" fill="#E8804C"/>
+          <path d="M55 46 L50 30 L66 44 Z" fill="#C9652F" opacity="0.5"/>
+          <path d="M105 46 L110 30 L94 44 Z" fill="#C9652F" opacity="0.5"/>
+          <!-- mata -->
+          <circle cx="68" cy="64" r="5" fill="#3A2E2A"/>
+          <circle cx="92" cy="64" r="5" fill="#3A2E2A"/>
+          <circle cx="69.5" cy="62.5" r="1.6" fill="#fff"/>
+          <circle cx="93.5" cy="62.5" r="1.6" fill="#fff"/>
+          <!-- hidung & mulut -->
+          <path d="M77 74 h6 l-3 3 z" fill="#3A2E2A"/>
+          <path d="M80 77 v3 M80 80 q-4 4 -8 2 M80 80 q4 4 8 2" stroke="#3A2E2A" stroke-width="2" fill="none" stroke-linecap="round"/>
+          <!-- kumis -->
+          <path d="M58 72 q-12 -1 -20 2 M58 77 q-12 3 -20 8 M102 72 q12 -1 20 2 M102 77 q12 3 20 8" stroke="#3A2E2A" stroke-width="1.5" fill="none" stroke-linecap="round" opacity="0.7"/>
+        </svg>
+      </div>
+      <p class="feed-hint" id="feed-hint">Tahan tombol untuk mengisi kekuatan lemparan, lepas untuk melempar.</p>
+      <div class="meter"><i id="feed-meter"></i><span class="mark"></span></div>
+      <div class="feed-controls">
+        <button class="btn teal block" id="btn-throw">
+          <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><path d="M12 3.5c-1.6 2-1.6 15 0 17M12 3.5c1.6 2 1.6 15 0 17M4.5 9h15M4.5 15h15"/></svg>
+          Tahan untuk isi daya
+        </button>
+      </div>
+    </section>
+
+    <!-- ================= IZIN KAMERA ================= -->
+    <section class="screen" data-screen="perm-cam" id="screen-perm-cam">
+      <div class="perm">
+        <div class="screen-head">
+          <button class="back" data-back="feed" aria-label="Kembali">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#3A2E2A" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+          </button>
+          <h2>Saatnya foto</h2>
+        </div>
+        <div class="perm-hero">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#E8804C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-label="Kamera"><path d="M4 8l2-3h12l2 3"/><rect x="2" y="8" width="20" height="12" rx="3"/><circle cx="12" cy="14" r="3.5"/></svg>
+          <h3>Abadikan kucingnya</h3>
+          <p>Foto kucing yang baru kamu kasih makan akan jadi kartu koleksimu di Meongdex. Foto disimpan hanya di perangkatmu.</p>
+        </div>
+        <div class="perm-list">
+          <div class="perm-item">
+            <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8l2-3h12l2 3"/><rect x="2" y="8" width="20" height="12" rx="3"/><circle cx="12" cy="14" r="3.5"/></svg></span>
+            <div class="tx"><h5>Kamera atau galeri</h5><p>Bisa ambil foto langsung atau pilih dari galeri.</p></div>
+          </div>
+          <div class="perm-item">
+            <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></span>
+            <div class="tx"><h5>Verifikasi AI lokal</h5><p>Foto diperiksa di ponselmu by TensorFlow.js, bukan di cloud.</p></div>
+          </div>
+        </div>
+        <button class="btn block" id="btn-open-cam">
+          <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8l2-3h12l2 3"/><rect x="2" y="8" width="20" height="12" rx="3"/><circle cx="12" cy="14" r="3.5"/></svg>
+          Ambil Foto
+        </button>
+        <!-- input tersembunyi -->
+        <input type="file" id="photo-input" accept="image/*" capture="environment" class="hide" />
+      </div>
+    </section>
+
+    <!-- ================= VERIFIKASI ================= -->
+    <section class="screen" data-screen="verify" id="screen-verify">
+      <div class="screen-head">
+        <button class="back" data-back="perm-cam" aria-label="Kembali">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#3A2E2A" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+        </button>
+        <h2>Verifikasi foto</h2>
+      </div>
+      <div class="photo-frame" id="verify-frame">
+        <img id="verify-img" alt="Foto kucing yang akan diverifikasi" />
+        <div class="detect-overlay" id="detect-overlay"></div>
+      </div>
+      <div class="verify-box">
+        <div class="paw-loader" id="verify-loading">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#E8804C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-4.9-9.5-9C.7 8.8 2 5 5.5 5c2 0 3.3 1.3 4 2.3.7-1 2-2.3 4-2.3 3.5 0 4.8 3.8 3 7-2.5 4.1-9.5 9-9.5 9z"/></svg>
+          <svg viewBox="0 0 24 24" fill="none" stroke="#E8804C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-4.9-9.5-9C.7 8.8 2 5 5.5 5c2 0 3.3 1.3 4 2.3.7-1 2-2.3 4-2.3 3.5 0 4.8 3.8 3 7-2.5 4.1-9.5 9-9.5 9z"/></svg>
+          <svg viewBox="0 0 24 24" fill="none" stroke="#E8804C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-4.9-9.5-9C.7 8.8 2 5 5.5 5c2 0 3.3 1.3 4 2.3.7-1 2-2.3 4-2.3 3.5 0 4.8 3.8 3 7-2.5 4.1-9.5 9-9.5 9z"/></svg>
+          <svg viewBox="0 0 24 24" fill="none" stroke="#E8804C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-4.9-9.5-9C.7 8.8 2 5 5.5 5c2 0 3.3 1.3 4 2.3.7-1 2-2.3 4-2.3 3.5 0 4.8 3.8 3 7-2.5 4.1-9.5 9-9.5 9z"/></svg>
+        </div>
+        <div id="verify-content" class="hide">
+          <span class="ai-tag" id="verify-tag">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
+            <span id="verify-tag-text">AI terdeteksi: kucing (91%)</span>
+          </span>
+          <p id="verify-msg">Terlihat seperti kucing. Simpan ke Meongdex sebagai temuan baru?</p>
+          <div class="verify-btns">
+            <button class="btn secondary" id="btn-retake">
+              <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="#3A2E2A" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v4h4"/></svg>
+              Foto ulang
+            </button>
+            <button class="btn" id="btn-confirm">
+              <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
+              <span id="btn-confirm-text">Ya, simpan</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= KARTU KUCING (temuan baru) ================= -->
+    <section class="screen" data-screen="card" id="screen-card">
+      <div class="screen-head">
+        <button class="back" data-back="home" aria-label="Kembali ke beranda">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#3A2E2A" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+        </button>
+        <h2>Kartu baru</h2>
+      </div>
+      <div class="card-stage">
+        <div class="trading-card" id="new-card">
+          <div class="id" id="card-id">#000</div>
+          <div class="rarity-tag" id="card-rarity">BIASA</div>
+          <div class="photo" id="card-photo">
+            <img id="card-img" alt="Foto kucing" />
+          </div>
+          <h4 id="card-name">Kucing Tanpa Nama</h4>
+          <div class="sub" id="card-sub">— · —</div>
+          <div class="tag-row" id="card-tags"></div>
+          <div class="quote" id="card-quote">"..."</div>
+        </div>
+        <div class="name-edit">
+          <input id="card-name-input" type="text" maxlength="24" placeholder="Beri nama kucing ini" />
+          <button class="btn sm" id="btn-set-name">Simpan</button>
+        </div>
+        <div class="card-meta" id="card-meta"></div>
+        <div class="card-actions">
+          <button class="btn secondary" id="btn-discard">
+            <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="#3A2E2A" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/></svg>
+            Buang
+          </button>
+          <button class="btn gold" id="btn-save-card">
+            <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+            Simpan ke Meongdex
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= MEONGDEX (KOLEKSI) ================= -->
+    <section class="screen" data-screen="dex" id="screen-dex">
+      <div class="cork-head">
+        <h2>Meongdex-mu</h2>
+        <span class="count" id="dex-count">0 kucing</span>
+      </div>
+      <div class="cork-filter" id="dex-filter">
+        <button class="active" data-filter="all">Semua</button>
+        <button data-filter="biasa">Biasa</button>
+        <button data-filter="langka">Langka</button>
+        <button data-filter="oren">Oren</button>
+        <button data-filter="hitam">Hitam</button>
+        <button data-filter="putih">Putih</button>
+        <button data-filter="belang">Belang</button>
+        <button data-filter="calico">Calico</button>
+      </div>
+      <div class="cork" id="dex-cork"></div>
+    </section>
+
+    <!-- ================= PENGATURAN ================= -->
+    <section class="screen" data-screen="settings" id="screen-settings">
+      <div class="screen-head"><h2>Pengaturan</h2></div>
+      <div class="set-list">
+        <button class="set-item" id="set-onboard">
+          <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v4M12 16h.01"/></svg></span>
+          <div class="tx"><div class="t">Lihat Cara Main</div><div class="d">Tayang ulang onboarding Si Oren</div></div>
+          <span class="arrow"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span>
+        </button>
+        <button class="set-item" id="set-about">
+          <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-4.9-9.5-9C.7 8.8 2 5 5.5 5c2 0 3.3 1.3 4 2.3.7-1 2-2.3 4-2.3 3.5 0 4.8 3.8 3 7-2.5 4.1-9.5 9-9.5 9z"/></svg></span>
+          <div class="tx"><div class="t">Tentang Meongdex</div><div class="d">Versi &amp; info game</div></div>
+          <span class="arrow"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span>
+        </button>
+        <button class="set-item" id="set-export">
+          <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></svg></span>
+          <div class="tx"><div class="t">Ekspor Meongdex (JSON)</div><div class="d">Cadangkan data koleksimu</div></div>
+          <span class="arrow"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span>
+        </button>
+      </div>
+      <div class="set-list mt-16">
+        <button class="set-item danger" id="set-clear">
+          <span class="ico" style="background:rgba(232,128,76,.14);color:#a8462e;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/></svg></span>
+          <div class="tx"><div class="t">Hapus semua data</div><div class="d">Koleksi, XP, dan progres akan hilang</div></div>
+          <span class="arrow"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span>
+        </button>
+      </div>
+      <p class="center muted mt-16" style="font-size:11px;font-family:'JetBrains Mono',monospace;">Meongdex · Fase 1 · data tersimpan lokal di perangkatmu</p>
+    </section>
+
+  </main>
+
+  <!-- bottom nav -->
+  <nav class="bottom-nav" id="bottom-nav">
+    <button data-nav="home" class="active" aria-label="Beranda">
+      <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/></svg>
+      Beranda
+    </button>
+    <button data-nav="dex" aria-label="Meongdex">
+      <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M3 9h18M8 4v-.5M16 4v-.5"/><path d="M7.5 13.5h3M7.5 17h6"/></svg>
+      Meongdex
+    </button>
+    <button data-nav="find" aria-label="Temukan kucing">
+      <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+      Buru
+    </button>
+    <button data-nav="settings" aria-label="Pengaturan">
+      <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
+      Atur
+    </button>
+  </nav>
+
+  <!-- toast -->
+  <div class="toast-wrap" id="toast-wrap" aria-live="polite" aria-atomic="true"></div>
+
+  <!-- overlay / sheet -->
+  <div class="overlay" id="overlay">
+    <div class="sheet" id="sheet" role="dialog" aria-modal="true"></div>
+  </div>
+
+</div>
+
+<!-- lib: idb untuk IndexedDB, TensorFlow.js + COCO-SSD untuk deteksi -->
+<script src="https://cdn.jsdelivr.net/npm/idb@8/build/umd.js" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.22.0/dist/tf.min.js" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd@2.2.3/dist/coco-ssd.min.js" defer></script>
+<script src="app.js" defer></script>
+</body>
+</html>

@@ -1,0 +1,13 @@
+# OS
+.DS_Store
+Thumbs.db
+
+# editor
+.vscode/
+.idea/
+
+# log
+*.log
+
+# jangan deploy artifact build lokal
+node_modules/

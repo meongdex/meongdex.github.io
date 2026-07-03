@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Ikon aplikasi Meongdex">
+  <!-- latar penuh terakota -->
+  <rect width="512" height="512" fill="#E8804C"/>
+  <!-- motif titik krem halus -->
+  <g fill="#FFF8ED" opacity="0.10">
+    <circle cx="64" cy="64" r="3"/><circle cx="128" cy="96" r="3"/><circle cx="96" cy="160" r="3"/>
+    <circle cx="416" cy="80" r="3"/><circle cx="384" cy="144" r="3"/><circle cx="448" cy="176" r="3"/>
+    <circle cx="80" cy="384" r="3"/><circle cx="144" cy="432" r="3"/><circle cx="48" cy="448" r="3"/>
+    <circle cx="400" cy="384" r="3"/><circle cx="448" cy="432" r="3"/><circle cx="368" cy="448" r="3"/>
+  </g>
+  <!-- wajah Si Oren (dalam safe zone maskable: lingkaran tengah radius ~40%) -->
+  <g transform="translate(256 256)">
+    <!-- telinga -->
+    <path d="M-90 -70 L-120 -180 L-30 -110 Z" fill="#FFF8ED"/>
+    <path d="M90 -70 L120 -180 L30 -110 Z" fill="#FFF8ED"/>
+    <path d="M-82 -78 L-104 -150 L-46 -112 Z" fill="#C9652F" opacity="0.55"/>
+    <path d="M82 -78 L104 -150 L46 -112 Z" fill="#C9652F" opacity="0.55"/>
+    <!-- kepala oval krem -->
+    <ellipse cx="0" cy="20" rx="140" ry="120" fill="#FFF8ED"/>
+    <!-- belang oranye di dahi -->
+    <path d="M-50 -60 Q-30 -95 0 -90 Q30 -95 50 -60 Q40 -40 0 -38 Q-40 -40 -50 -60 Z" fill="#E8804C"/>
+    <!-- mata -->
+    <circle cx="-48" cy="14" r="20" fill="#3A2E2A"/>
+    <circle cx="48" cy="14" r="20" fill="#3A2E2A"/>
+    <circle cx="-41" cy="6" r="6" fill="#ffffff"/>
+    <circle cx="55" cy="6" r="6" fill="#ffffff"/>
+    <!-- hidung &amp; mulut -->
+    <path d="M-10 52 q10 10 10 10 q0 0 10 -10" stroke="#3A2E2A" stroke-width="7" fill="none" stroke-linecap="round"/>
+    <path d="M-16 60 q16 16 32 0" stroke="#3A2E2A" stroke-width="7" fill="none" stroke-linecap="round"/>
+    <!-- kumis -->
+    <path d="M-70 40 q-40 -6 -68 6M-70 56 q-40 8 -68 24M70 40 q40 -6 68 6M70 56 q40 8 68 24" stroke="#3A2E2A" stroke-width="5" fill="none" stroke-linecap="round" opacity="0.8"/>
+  </g>
+</svg>

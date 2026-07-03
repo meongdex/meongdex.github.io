@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" role="img" aria-label="Maskot Si Oren, kucing oranye Meongdex">
+  <!-- bayangan tanah -->
+  <ellipse cx="100" cy="158" rx="58" ry="14" fill="rgba(58,46,42,0.10)"/>
+  <!-- telinga kiri &amp; kanan -->
+  <path d="M55 70 L38 28 L78 56 Z" fill="#E8804C"/>
+  <path d="M145 70 L162 28 L122 56 Z" fill="#E8804C"/>
+  <!-- bagian dalam telinga lebih gelap -->
+  <path d="M60 66 L48 42 L74 56 Z" fill="#C9652F" opacity="0.55"/>
+  <path d="M140 66 L152 42 L126 56 Z" fill="#C9652F" opacity="0.55"/>
+  <!-- badan oval -->
+  <ellipse cx="100" cy="115" rx="62" ry="55" fill="#E8804C"/>
+  <!-- pipi krem -->
+  <ellipse cx="100" cy="128" rx="30" ry="24" fill="#FFF8ED"/>
+  <!-- garis samping badan -->
+  <path d="M45 100 q10 20 0 40" stroke="#C9652F" stroke-width="5" fill="none" stroke-linecap="round" opacity="0.7"/>
+  <path d="M155 100 q-10 20 0 40" stroke="#C9652F" stroke-width="5" fill="none" stroke-linecap="round" opacity="0.7"/>
+  <!-- mata -->
+  <circle cx="82" cy="108" r="7.5" fill="#3A2E2A"/>
+  <circle cx="118" cy="108" r="7.5" fill="#3A2E2A"/>
+  <circle cx="84.5" cy="105" r="2.4" fill="#ffffff"/>
+  <circle cx="120.5" cy="105" r="2.4" fill="#ffffff"/>
+  <!-- hidung &amp; mulut -->
+  <path d="M96 120 q4 4 4 4 q0 0 4 -4" stroke="#3A2E2A" stroke-width="3" fill="none" stroke-linecap="round"/>
+  <path d="M100 120 v4" stroke="#3A2E2A" stroke-width="3" stroke-linecap="round"/>
+  <path d="M94 124 q6 6 12 0" stroke="#3A2E2A" stroke-width="3" fill="none" stroke-linecap="round"/>
+  <!-- kumis -->
+  <path d="M70 128 q-16 -2 -28 4M70 134 q-16 4 -28 10M130 128 q16 -2 28 4M130 134 q16 4 28 10" stroke="#3A2E2A" stroke-width="2" fill="none" stroke-linecap="round" opacity="0.85"/>
+  <!-- ekor melingkar -->
+  <path d="M60 155 Q100 178 140 155" stroke="#C9652F" stroke-width="6" fill="none" stroke-linecap="round"/>
+</svg>
