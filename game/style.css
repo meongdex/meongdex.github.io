@@ -794,3 +794,113 @@ main{flex:1;display:flex;flex-direction:column;position:relative;overflow:hidden
   .bottom-nav button{font-size:9px;letter-spacing:.02em;}
   .bottom-nav button .ico{width:20px;height:20px;}
 }
+
+/* ---------- 35. Rumah / Shelter ---------- */
+.shelter-head{display:flex;justify-content:space-between;align-items:baseline;margin:4px 0 12px;}
+.shelter-head h2{font-size:20px;}
+.shelter-head .count{font-size:12px;font-family:'JetBrains Mono',monospace;color:var(--terracotta-deep);background:rgba(232,128,76,.12);padding:5px 11px;border-radius:999px;font-weight:700;}
+.shelter-intro{
+  display:flex;gap:12px;align-items:center;background:var(--paper);border:1px solid var(--line);
+  border-radius:var(--radius-lg);padding:12px 14px;margin-bottom:14px;box-shadow:var(--shadow-sm);
+}
+.shelter-intro svg{width:36px;height:36px;flex-shrink:0;color:var(--terracotta);}
+.shelter-intro .tx{font-size:13px;color:var(--text-soft);line-height:1.5;}
+.shelter-room{
+  flex:1;border-radius:var(--radius-xl);position:relative;overflow:hidden;min-height:300px;
+  background:
+    linear-gradient(180deg,#FBEFDD 0%,#F2DEBD 100%);
+  border:1px solid var(--line);box-shadow:inset 0 0 0 2px rgba(232,128,76,.08), var(--shadow);
+  padding:20px;
+  display:grid;grid-template-columns:repeat(3,1fr);gap:14px;align-items:end;justify-items:center;
+}
+.shelter-room::before{
+  content:"";position:absolute;inset:0;pointer-events:none;
+  background:
+    radial-gradient(circle at 12% 88%, rgba(58,46,42,.06) 2px, transparent 2px) 0 0/24px 24px,
+    radial-gradient(circle at 50% 50%, rgba(232,128,76,.06), transparent 60%);
+}
+.shelter-slot{
+  position:relative;width:100%;aspect-ratio:1;border-radius:var(--radius);
+  display:grid;place-items:center;transition:transform .2s ease;
+}
+.shelter-slot.occupied{cursor:pointer;}
+.shelter-slot.occupied:hover{transform:translateY(-4px);}
+.shelter-slot .cat-bed{
+  width:100%;height:100%;border-radius:var(--radius);
+  background:radial-gradient(ellipse at center, #FFF8ED 30%, #F5EBDA 70%);
+  border:2px solid var(--line);
+  display:grid;place-items:center;position:relative;overflow:hidden;
+  box-shadow:0 8px 14px -8px rgba(58,46,42,.3);
+}
+.shelter-slot.epic .cat-bed{border-color:#9b6dd4;box-shadow:0 8px 14px -8px rgba(155,109,212,.5);}
+.shelter-slot.legendary .cat-bed{border-color:var(--gold);box-shadow:0 0 18px -2px rgba(212,175,55,.5);}
+.shelter-slot .cat-bed svg{width:65%;height:65%;}
+.shelter-slot .cat-bed img{width:100%;height:100%;object-fit:cover;}
+.shelter-slot .name-tag{
+  position:absolute;bottom:-6px;left:50%;transform:translateX(-50%);
+  background:var(--paper);border:1px solid var(--line);border-radius:999px;
+  padding:2px 10px;font-size:10px;font-weight:700;font-family:'Fredoka',sans-serif;
+  white-space:nowrap;max-width:110px;overflow:hidden;text-overflow:ellipsis;box-shadow:var(--shadow-sm);
+}
+.shelter-slot.empty .cat-bed{
+  background:transparent;border:2px dashed rgba(120,80,40,.3);box-shadow:none;
+}
+.shelter-slot.empty .cat-bed::after{
+  content:"";width:30px;height:30px;border-radius:999px;
+  border:2px dashed rgba(120,80,40,.35);
+}
+.shelter-actions{margin-top:14px;}
+
+/* shelter edit sheet */
+.shelter-pick-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:12px 0;max-height:50vh;overflow-y:auto;}
+.shelter-pick{
+  background:var(--paper);border:2px solid var(--line);border-radius:var(--radius);padding:6px;
+  cursor:pointer;transition:all .15s ease;position:relative;
+}
+.shelter-pick:active{transform:scale(.96);}
+.shelter-pick.active{border-color:var(--terracotta);box-shadow:0 0 0 3px rgba(232,128,76,.18);}
+.shelter-pick .ph{aspect-ratio:1;border-radius:8px;overflow:hidden;background:var(--cream-deep);}
+.shelter-pick .ph img{width:100%;height:100%;object-fit:cover;}
+.shelter-pick .nm{font-size:10px;font-weight:700;text-align:center;font-family:'Fredoka',sans-serif;margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.shelter-pick .check{
+  position:absolute;top:4px;right:4px;width:20px;height:20px;border-radius:999px;
+  background:var(--terracotta);color:#fff;display:none;place-items:center;
+}
+.shelter-pick.active .check{display:grid;}
+
+/* ---------- 36. Rarity lengkap (epik & legendaris) ---------- */
+.trading-card.epic{border-color:#9b6dd4;}
+.trading-card.epic .rarity-tag{background:#9b6dd4;color:#fff;}
+.trading-card.epic::after{
+  content:"";position:absolute;inset:-3px;border-radius:var(--radius-lg);
+  background:linear-gradient(135deg,rgba(155,109,212,.5),transparent 30%,transparent 70%,rgba(155,109,212,.5));
+  z-index:-1;filter:blur(6px);opacity:.6;
+}
+.trading-card.legendary{border-color:var(--gold);border-width:4px;}
+.trading-card.legendary .rarity-tag{background:var(--gold);color:var(--rarity-rare-ink);}
+.trading-card.legendary::before{
+  content:"";position:absolute;inset:-6px;border-radius:var(--radius-lg);
+  background:conic-gradient(from 0deg, var(--gold), #fff8c4, var(--gold), #fff8c4, var(--gold));
+  z-index:-2;filter:blur(8px);opacity:.5;animation:shimmer 3s linear infinite;
+}
+@keyframes shimmer{from{transform:rotate(0deg);}to{transform:rotate(360deg);}}
+.mini-card.epic{border-color:#9b6dd4;}
+.mini-card.epic .pin{background:#9b6dd4;}
+.mini-card.legendary{border-color:var(--gold);border-width:3px;}
+.mini-card.legendary .pin{background:var(--gold);}
+.mini-card.legendary .thumb{box-shadow:0 0 10px rgba(212,175,55,.4);}
+
+/* ---------- 37. Card skins (tema kosmetik) ---------- */
+.trading-card.skin-mint{border-color:#7ec8b8;}
+.trading-card.skin-mint .rarity-tag{background:#7ec8b8;}
+.trading-card.skin-rose{border-color:#e8a4b8;}
+.trading-card.skin-rose .rarity-tag{background:#e8a4b8;}
+.trading-card.skin-night{border-color:#4a4868;}
+.trading-card.skin-night .rarity-tag{background:#4a4868;}
+.skin-picker{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;}
+.skin-opt{
+  width:30px;height:30px;border-radius:999px;cursor:pointer;border:3px solid var(--line);
+  transition:transform .12s ease;
+}
+.skin-opt:active{transform:scale(.9);}
+.skin-opt.active{border-color:var(--charcoal);box-shadow:0 0 0 2px var(--paper),0 0 0 4px var(--charcoal);}

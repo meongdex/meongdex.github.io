@@ -346,6 +346,8 @@
         <button class="active" data-filter="all">Semua</button>
         <button data-filter="biasa">Biasa</button>
         <button data-filter="langka">Langka</button>
+        <button data-filter="epik">Epik</button>
+        <button data-filter="legendaris">Legendaris</button>
         <button data-filter="oren">Oren</button>
         <button data-filter="hitam">Hitam</button>
         <button data-filter="putih">Putih</button>
@@ -392,6 +394,22 @@
         </div>
       </div>
       <p class="map-note" id="map-note">Peta membutuhkan koneksi internet pada kunjungan pertama. Titik sarang disimpan lokal di perangkatmu.</p>
+    </section>
+
+    <!-- ================= RUMAH / SHELTER ================= -->
+    <section class="screen" data-screen="shelter" id="screen-shelter">
+      <div class="shelter-head">
+        <h2>Rumah Kucing</h2>
+        <span class="count" id="shelter-count">0 / 6</span>
+      </div>
+      <div class="shelter-intro">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12l9-8 9 8"/><path d="M5 10v10h14V10"/><path d="M9 20v-6h6v6"/></svg>
+        <div class="tx">Pilih kucing favoritmu untuk menghuni rumah ini. Ruang ini jadi tempat istirahat koleksimu.</div>
+      </div>
+      <div class="shelter-room" id="shelter-room"></div>
+      <div class="shelter-actions">
+        <button class="btn secondary block" id="shelter-edit">Atur penghuni</button>
+      </div>
     </section>
 
     <!-- ================= PENGATURAN ================= -->
@@ -457,6 +475,10 @@
     <button data-nav="map" aria-label="Peta sarang kucing">
       <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4l-6 2v14l6-2 6 2 6-2V4l-6 2-6-2z"/><path d="M9 4v14M15 6v14"/></svg>
       Peta
+    </button>
+    <button data-nav="shelter" aria-label="Rumah kucing">
+      <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12l9-8 9 8"/><path d="M5 10v10h14V10"/><path d="M9 20v-6h6v6"/></svg>
+      Rumah
     </button>
     <button data-nav="settings" aria-label="Pengaturan">
       <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>

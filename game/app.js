@@ -24,7 +24,25 @@ const CONFIG = {
   SESSION_BONUS_PER_CAT: 15,     // bonus XP per kucing tambahan dalam sesi
   SESSION_BONUS_CAP: 60,         // maks bonus sesi per kucing
   CHALLENGE_BONUS: 80,           // XP per tantangan selesai
+  SHELTER_SLOTS: 6,              // jumlah slot rumah kucing
+  RARITY_XP: { biasa:0, langka:30, epik:70, legendaris:150 },
 };
+
+// Tingkat kelangkaan lengkap (Fase 3): biasa < langka < epik < legendaris
+const RARITIES = {
+  biasa:      { label:'BIASA',      color:'#4A9B8E', ink:'#fff',      order:1 },
+  langka:     { label:'LANGKA',     color:'#D4AF37', ink:'#4A3A0E',   order:2 },
+  epik:       { label:'EPIK',       color:'#9b6dd4', ink:'#fff',      order:3 },
+  legendaris: { label:'LEGENDARIS', color:'#D4AF37', ink:'#4A3A0E',   order:4 },
+};
+
+// Tema kartu kosmetik (Fase 3): skin alternatif (opsional, sukarela)
+const CARD_SKINS = [
+  { id:'default', label:'Klasik', color:'#4A9B8E' },
+  { id:'mint',    label:'Mint',   color:'#7ec8b8' },
+  { id:'rose',    label:'Rose',   color:'#e8a4b8' },
+  { id:'night',   label:'Night',  color:'#4a4868' },
+];
 
 const COLORS = [
   { id:'oren',  label:'Oren',  hex:'#E8804C' },
@@ -94,6 +112,8 @@ const Store = {
       sessionCatCount:0,
       completedChallenges:[],
       soundEnabled:true,
+      shelterCatIds:[],  // id kucing yang menghuni rumah
+      cardSkin:'default', // tema kartu kosmetik aktif
     };
   },
   load(){
@@ -186,7 +206,7 @@ function el(tag, props={}, children=[]){
 /* ---------------------------------------------------------------------
    4. Navigasi screen
    --------------------------------------------------------------------- */
-const screenOrder = ['onboarding','home','perm-loc','feed','perm-cam','verify','card','dex','journal','map','settings'];
+const screenOrder = ['onboarding','home','perm-loc','feed','perm-cam','verify','card','dex','journal','map','shelter','settings'];
 let currentScreen = 'onboarding';
 
 function go(screen){
@@ -195,7 +215,7 @@ function go(screen){
   currentScreen = screen;
   $('#main').scrollTop = 0;
   // bottom nav aktif
-  const navMap = { home:'home', dex:'dex', settings:'settings', journal:'journal', map:'map' };
+  const navMap = { home:'home', dex:'dex', settings:'settings', journal:'journal', map:'map', shelter:'shelter' };
   $$('.bottom-nav button').forEach(b=>{
     const active = b.dataset.nav === navMap[screen] || (screen==='find' && b.dataset.nav==='find');
     b.classList.toggle('active', active);
@@ -205,6 +225,7 @@ function go(screen){
   if(screen==='dex') renderDex();
   if(screen==='journal') renderJournal();
   if(screen==='map') renderMap();
+  if(screen==='shelter') renderShelter();
   if(screen==='settings') {/* statis */}
 }
 
@@ -711,9 +732,15 @@ let selectedColor = 'lainnya';
 
 async function buildNewCard(){
   const id = await nextCatId();
-  // rarity: calico -> langka; atau ~18% acak langka
-  const isRare = selectedColor==='calico' ? true : (Math.random() < 0.18);
-  const rarity = isRare ? 'langka' : 'biasa';
+  // rarity lengkap (Fase 3): calico -> langka; roll acak untuk epik/legendaris
+  let rarity = 'biasa';
+  if(selectedColor==='calico'){ rarity = 'langka'; }
+  const roll = Math.random();
+  if(roll < 0.04) rarity = 'legendaris';      // 4% legendaris
+  else if(roll < 0.12) rarity = 'epik';       // 8% epik
+  else if(roll < 0.30 || selectedColor==='calico') rarity = (selectedColor==='calico' && roll<0.12) ? 'epik' : 'langka'; // ~18% langka
+  // calico tetap minimal langka
+  if(selectedColor==='calico' && rarity==='biasa') rarity='langka';
   const quote = QUOTES[Math.floor(Math.random()*QUOTES.length)];
   // default nama
   const num = parseInt(id.replace(/\D/g,''),10);
@@ -738,9 +765,17 @@ async function buildNewCard(){
 function renderNewCard(){
   const c = pendingCat;
   const card = $('#new-card');
-  card.classList.toggle('rare', c.rarity==='langka');
+  // reset rarity classes lalu set sesuai rarity
+  card.classList.remove('rare','epic','legendary');
+  if(c.rarity==='langka') card.classList.add('rare');
+  else if(c.rarity==='epik') card.classList.add('epic');
+  else if(c.rarity==='legendaris') card.classList.add('legendary','rare');
+  // terapkan skin aktif
+  card.classList.remove('skin-mint','skin-rose','skin-night');
+  if(player.cardSkin && player.cardSkin!=='default') card.classList.add('skin-'+player.cardSkin);
+  const rar = RARITIES[c.rarity] || RARITIES.biasa;
   $('#card-id').textContent = '#'+c.id.replace('MDX-','');
-  $('#card-rarity').textContent = c.rarity==='langka' ? 'LANGKA' : 'BIASA';
+  $('#card-rarity').textContent = rar.label;
   $('#card-img').src = c.photo;
   $('#card-name').textContent = c.name;
   const d = new Date(c.date);
@@ -750,7 +785,8 @@ function renderNewCard(){
   const tags = $('#card-tags'); tags.innerHTML='';
   const colorLabel = (COLORS.find(x=>x.id===c.color)||{}).label || c.color;
   tags.appendChild(el('span',{}, colorLabel));
-  tags.appendChild(el('span',{}, c.rarity==='langka'?'Langka':'Biasa'));
+  const rarLabel = c.rarity.charAt(0).toUpperCase()+c.rarity.slice(1);
+  tags.appendChild(el('span',{}, rarLabel));
   tags.appendChild(el('span',{}, c.verifiedByAI ? 'Terverifikasi AI' : 'Konfirmasi manual'));
   $('#card-quote').textContent = '"'+c.quote+'"';
   // name input
@@ -800,10 +836,10 @@ async function saveCat(){
   if(!pendingCat) return;
   const btn = $('#btn-save-card'); btn.disabled = true;
   try{
-    // terapkan warna &amp; rarity final
+    // terapkan warna &amp; rarity final (rarity sudah ditentukan di buildNewCard)
     pendingCat.color = selectedColor;
-    const isRare = selectedColor==='calico' ? true : (pendingCat.rarity==='langka');
-    pendingCat.rarity = isRare ? 'langka' : 'biasa';
+    // calico minimal langka
+    if(selectedColor==='calico' && pendingCat.rarity==='biasa') pendingCat.rarity='langka';
     // simpan makanan yang dipakai (dari feed)
     pendingCat.foodUsed = pendingCat.foodUsed || 'snack';
     // jika nama kosong, default
@@ -815,7 +851,7 @@ async function saveCat(){
     currentCatsCache = await allCats();
     // update stat
     const oldLevel = levelFromXp(player.xp);
-    let gain = CONFIG.XP_PER_CAT + (pendingCat.rarity==='langka'?CONFIG.XP_RARE_BONUS:0);
+    let gain = CONFIG.XP_PER_CAT + (CONFIG.RARITY_XP[pendingCat.rarity] || 0);
     // bonus makanan
     const food = FOODS.find(f=>f.id===pendingCat.foodUsed);
     if(food && food.xpBonus){ gain += food.xpBonus; }
@@ -930,7 +966,7 @@ async function renderDex(){
   $('#dex-count').textContent = `${currentCatsCache.length} kucing`;
   const filtered = currentCatsCache.filter(c=>{
     if(currentFilter==='all') return true;
-    if(currentFilter==='biasa'||currentFilter==='langka') return c.rarity===currentFilter;
+    if(['biasa','langka','epik','legendaris'].includes(currentFilter)) return c.rarity===currentFilter;
     return c.color===currentFilter;
   });
   cork.innerHTML='';
@@ -972,7 +1008,11 @@ function emptySlot(){
   return el('div',{class:'mini-card empty'}, el('div',{class:'q'},'?'));
 }
 function miniCard(c){
-  const card = el('div',{class:'mini-card'+(c.rarity==='langka'?' rare':''), onclick:()=>openCatDetail(c.id)});
+  let extraClass = '';
+  if(c.rarity==='langka') extraClass=' rare';
+  else if(c.rarity==='epik') extraClass=' epic';
+  else if(c.rarity==='legendaris') extraClass=' legendary rare';
+  const card = el('div',{class:'mini-card'+extraClass, onclick:()=>openCatDetail(c.id)});
   card.appendChild(el('div',{class:'pin'}));
   const thumb = el('div',{class:'thumb'});
   if(c.photo) thumb.innerHTML = `<img src="${c.photo}" alt="${c.name}">`;
@@ -1001,19 +1041,29 @@ async function openCatDetail(id){
   const colorLabel = (COLORS.find(x=>x.id===c.color)||{}).label || c.color;
   const d = new Date(c.date);
   const locText = c.lat!=null ? `${c.lat.toFixed(4)}, ${c.lon.toFixed(4)}` : 'lokasi tidak dicatat';
+  const rar = RARITIES[c.rarity] || RARITIES.biasa;
+  const rarLabel = c.rarity.charAt(0).toUpperCase()+c.rarity.slice(1);
+  // rarity class untuk card
+  let rarClass = '';
+  if(c.rarity==='langka') rarClass='rare';
+  else if(c.rarity==='epik') rarClass='epic';
+  else if(c.rarity==='legendaris') rarClass='legendary rare';
+  // skin class
+  let skinClass = '';
+  if(player.cardSkin && player.cardSkin!=='default') skinClass = ' skin-'+player.cardSkin;
   const badgeHtml = myBadges.length ? `<div class="badge-grid">${myBadges.map(b=>
     `<span class="badge-chip blush"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9 12l2 2 4-4"/></svg>${b.label}</span>`
   ).join('')}</div>` : '';
   content.innerHTML = `
     <h3>${escapeHtml(c.name)}</h3>
     <p class="mono" style="font-size:12px;color:var(--text-soft);margin-bottom:12px;">#${c.id} · ${d.toLocaleDateString('id-ID',{day:'numeric',month:'long',year:'numeric'})}</p>
-    <div class="trading-card ${c.rarity==='langka'?'rare':''}" style="width:100%;transform:none;margin-bottom:14px;">
+    <div class="trading-card ${rarClass}${skinClass}" style="width:100%;transform:none;margin-bottom:14px;">
       <div class="id">#${c.id.replace('MDX-','')}</div>
-      <div class="rarity-tag">${c.rarity==='langka'?'LANGKA':'BIASA'}</div>
+      <div class="rarity-tag">${rar.label}</div>
       <div class="photo" style="height:200px;"><img src="${c.photo}" alt="${escapeHtml(c.name)}"></div>
       <h4>${escapeHtml(c.name)}</h4>
       <div class="sub">${d.toLocaleDateString('id-ID',{day:'numeric',month:'short',year:'numeric'})} · ${locText}</div>
-      <div class="tag-row"><span>${colorLabel}</span><span>${c.rarity==='langka'?'Langka':'Biasa'}</span><span>${c.verifiedByAI?'Terverifikasi AI':'Konfirmasi manual'}</span></div>
+      <div class="tag-row"><span>${colorLabel}</span><span>${rarLabel}</span><span>${c.verifiedByAI?'Terverifikasi AI':'Konfirmasi manual'}</span></div>
       <div class="quote">"${escapeHtml(c.quote)}"</div>
     </div>
     ${badgeHtml}
@@ -1022,6 +1072,7 @@ async function openCatDetail(id){
       <span class="pill">${colorLabel}</span>
       <span class="pill">${locText}</span>
     </div>
+    <div id="skin-picker-host" class="card-meta color-grid" style="margin-top:12px;"></div>
     <div class="row gap-8 mt-16">
       <button class="btn teal block" id="detail-share">
         <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg>
@@ -1031,6 +1082,12 @@ async function openCatDetail(id){
       <button class="btn block danger" id="detail-delete" style="background:#a8462e;color:#fff;">Hapus</button>
     </div>`;
   openSheet(content);
+  // skin picker
+  const skinHost = $('#skin-picker-host');
+  if(skinHost) renderSkinPicker(skinHost, player.cardSkin, (newSkin)=>{
+    player.cardSkin = newSkin; Store.save(player);
+    toast('Tema kartu diterapkan','',ICONS.check);
+  });
   $('#detail-share').addEventListener('click', ()=> openShareSheet(c));
   $('#detail-rename').addEventListener('click', ()=> renameCat(c));
   $('#detail-delete').addEventListener('click', ()=> deleteCatConfirm(c));
@@ -1122,7 +1179,7 @@ async function renderJournal(){
     if(d.getTime()===today.getTime()) label='Hari ini';
     else if(d.getTime()===yest.getTime()) label='Kemarin';
     else label=d.toLocaleDateString('id-ID',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
-    const totalXp = entries.reduce((s,c)=> s + CONFIG.XP_PER_CAT + (c.rarity==='langka'?CONFIG.XP_RARE_BONUS:0), 0);
+    const totalXp = entries.reduce((s,c)=> s + CONFIG.XP_PER_CAT + (CONFIG.RARITY_XP[c.rarity] || 0), 0);
     const dayWrap = el('div',{class:'journal-day'});
     dayWrap.appendChild(el('div',{class:'journal-day-head'}, [
       el('span',{class:'date-pill'}, label),
@@ -1134,8 +1191,8 @@ async function renderJournal(){
       const hh = String(d2.getHours()).padStart(2,'0');
       const mm = String(d2.getMinutes()).padStart(2,'0');
       const colorLabel = (COLORS.find(x=>x.id===c.color)||{}).label || c.color;
-      const xp = CONFIG.XP_PER_CAT + (c.rarity==='langka'?CONFIG.XP_RARE_BONUS:0);
-      const entry = el('div',{class:'journal-entry'+(c.rarity==='langka'?' rare':''), onclick:()=>openCatDetail(c.id)});
+      const xp = CONFIG.XP_PER_CAT + (CONFIG.RARITY_XP[c.rarity] || 0);
+      const entry = el('div',{class:'journal-entry'+(c.rarity!=='biasa'?' rare':''), onclick:()=>openCatDetail(c.id)});
       entry.appendChild(el('div',{class:'time'}, [el('b',{},hh), mm]));
       const thumb = el('div',{class:'thumb'});
       if(c.photo) thumb.innerHTML = `<img src="${c.photo}" alt="${escapeHtml(c.name)}">`;
@@ -1263,6 +1320,106 @@ async function refreshWeatherForLastLoc(){
   const cats = await allCats();
   const withLoc = cats.find(c=> c.lat!=null && c.lon!=null);
   if(withLoc) renderWeather(withLoc.lat, withLoc.lon);
+}
+
+/* ---------------------------------------------------------------------
+   13b4. Rumah / Shelter virtual (ruang dekorasi koleksi)
+   --------------------------------------------------------------------- */
+async function renderShelter(){
+  const cats = await allCats();
+  const shelterIds = player.shelterCatIds || [];
+  const shelterCats = shelterIds.map(id=> cats.find(c=>c.id===id)).filter(Boolean);
+  $('#shelter-count').textContent = `${shelterCats.length} / ${CONFIG.SHELTER_SLOTS}`;
+  const room = $('#shelter-room');
+  room.innerHTML='';
+  for(let i=0;i<CONFIG.SHELTER_SLOTS;i++){
+    const c = shelterCats[i];
+    const slot = el('div',{class:'shelter-slot '+(c?`occupied ${c.rarity}`:'empty')});
+    if(c){
+      slot.onclick = ()=> openCatDetail(c.id);
+      const bed = el('div',{class:'cat-bed'});
+      if(c.photo) bed.innerHTML = `<img src="${c.photo}" alt="${escapeHtml(c.name)}">`;
+      slot.appendChild(bed);
+      slot.appendChild(el('div',{class:'name-tag'}, c.name));
+    } else {
+      slot.appendChild(el('div',{class:'cat-bed'}));
+    }
+    room.appendChild(slot);
+  }
+}
+
+$('#shelter-edit').addEventListener('click', openShelterEdit);
+
+async function openShelterEdit(){
+  const cats = await allCats();
+  const shelterIds = player.shelterCatIds || [];
+  if(cats.length===0){
+    toast('Belum ada kucing untuk menghuni rumah','warn',ICONS.warn);
+    return;
+  }
+  const content = el('div');
+  let html = `<h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#E8804C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12l9-8 9 8"/><path d="M5 10v10h14V10"/></svg> Atur penghuni rumah</h3>
+  <p>Pilih maksimal ${CONFIG.SHELTER_SLOTS} kucing untuk menghuni rumah. Klik lagi untuk mengeluarkan.</p>
+  <div class="shelter-pick-grid" id="shelter-pick-grid">`;
+  cats.forEach(c=>{
+    const active = shelterIds.includes(c.id);
+    html += `<div class="shelter-pick${active?' active':''}" data-id="${c.id}">
+      <div class="ph"><img src="${c.photo}" alt="${escapeHtml(c.name)}"></div>
+      <div class="nm">${escapeHtml(c.name)}</div>
+      <div class="check"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg></div>
+    </div>`;
+  });
+  html += `</div>
+  <div class="row gap-8 mt-12">
+    <button class="btn secondary block" id="shelter-clear">Kosongkan</button>
+    <button class="btn block" id="shelter-save">Simpan</button>
+  </div>`;
+  content.innerHTML = html;
+  openSheet(content);
+  // toggle pick
+  let picked = [...shelterIds];
+  $$('.shelter-pick').forEach(node=>{
+    node.addEventListener('click', ()=>{
+      const id = node.dataset.id;
+      const idx = picked.indexOf(id);
+      if(idx>=0){ picked.splice(idx,1); node.classList.remove('active'); }
+      else {
+        if(picked.length >= CONFIG.SHELTER_SLOTS){
+          toast(`Maksimal ${CONFIG.SHELTER_SLOTS} penghuni`,'warn',ICONS.warn);
+          return;
+        }
+        picked.push(id); node.classList.add('active');
+      }
+    });
+  });
+  $('#shelter-clear').addEventListener('click', ()=>{
+    picked = [];
+    $$('.shelter-pick').forEach(n=> n.classList.remove('active'));
+  });
+  $('#shelter-save').addEventListener('click', ()=>{
+    player.shelterCatIds = picked;
+    Store.save(player);
+    closeSheet();
+    renderShelter();
+    toast('Penghuni rumah disimpan','success',ICONS.check);
+    playChime();
+  });
+}
+
+/* ---------------------------------------------------------------------
+   13b5. Tema kartu kosmetik (skin picker di detail kucing)
+   --------------------------------------------------------------------- */
+function renderSkinPicker(container, currentSkin, onSelect){
+  container.innerHTML='';
+  const label = el('div',{class:'mono',style:'font-size:11px;color:var(--text-mute);text-transform:uppercase;letter-spacing:.08em;width:100%;'}, 'Tema kartu');
+  container.appendChild(label);
+  const wrap = el('div',{class:'skin-picker'});
+  CARD_SKINS.forEach(s=>{
+    const opt = el('button',{class:'skin-opt'+(s.id===currentSkin?' active':''),'aria-label':s.label,title:s.label,style:`background:${s.color};`});
+    opt.onclick = ()=>{ onSelect(s.id); renderSkinPicker(container, s.id, onSelect); };
+    wrap.appendChild(opt);
+  });
+  container.appendChild(wrap);
 }
 
 /* ---------------------------------------------------------------------
