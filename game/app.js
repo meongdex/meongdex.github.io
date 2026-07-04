@@ -127,6 +127,10 @@ const CHALLENGES = [
   { id:'ai',         label:'Terverifikasi',  desc:'Simpan kucing yang lolos verifikasi AI.', badge:'Terverifikasi AI', check:(c)=>c.verifiedByAI },
   { id:'five',       label:'Lima kucing',    desc:'Koleksi 5 kucing di Meongdex.', badge:'Kolektor', check:(c,all)=>all.length>=5 },
   { id:'ten',        label:'Sepuluh kucing', desc:'Koleksi 10 kucing di Meongdex.', badge:'Pemburu Sejati', check:(c,all)=>all.length>=10 },
+  // C5 addendum: badge Kolektor Warna Lengkap — mendorong variasi mengoleksi,
+  // bukan cuma jumlah. Terbuka saat pemain sudah punya minimal 1 kucing
+  // untuk tiap tag warna yang tersedia.
+  { id:'allcolors',  label:'Kolektor Warna Lengkap', desc:'Punya minimal 1 kucing untuk tiap tag warna.', badge:'Pelangi Kucing', check:(c,all)=>COLORS.every(col=>all.some(x=>x.color===col.id)) },
 ];
 
 // Tantangan foto kreatif honor-system (Bagian 2.5 addendum).
@@ -1478,6 +1482,11 @@ async function renderDex(){
   await new Promise(r=>setTimeout(r,250));
   currentCatsCache = await allCats();
   $('#dex-count').textContent = `${currentCatsCache.length} kucing`;
+  // C1 enhancement: mini distribusi warna di Meongdex cork-head.
+  // Bar horizontal ringkas — setiap warna jadi segmen dengan lebar proporsional
+  // ke jumlah kucing warna itu. Klik segmen = filter by warna itu.
+  // Distribusi lengkap (dengan label angka per warna) tetap di layar Statistik.
+  renderDexColorStrip(currentCatsCache);
   const q = currentSearch.toLowerCase().trim();
   const filtered = currentCatsCache.filter(c=>{
     if(currentFilter==='all') {/* ok */}
@@ -1501,6 +1510,48 @@ async function renderDex(){
   filtered.forEach(c=> cork.appendChild(miniCard(c)));
   if(filtered.length % 2 !== 0){
     cork.appendChild(emptySlot());
+  }
+}
+
+/**
+ * C1 enhancement: render mini distribusi warna di Meongdex cork-head.
+ * Bar horizontal dengan segmen per warna, lebar proporsional ke jumlah kucing.
+ * Klik segmen = filter by warna. Hover = tooltip label + count.
+ * Kalau koleksi kosong, strip di-hide.
+ */
+function renderDexColorStrip(cats){
+  const strip = $('#dex-color-strip');
+  if(!strip) return;
+  if(!cats || cats.length === 0){
+    strip.classList.add('hide');
+    strip.innerHTML = '';
+    return;
+  }
+  strip.classList.remove('hide');
+  strip.innerHTML = '';
+  const total = cats.length;
+  COLORS.forEach(col=>{
+    const count = cats.filter(c=>c.color===col.id).length;
+    if(count === 0) return; // skip warna yang belum ada
+    const pct = (count / total) * 100;
+    const seg = el('button', {
+      class: 'dcs-seg' + (currentFilter === col.id ? ' active' : ''),
+      'data-color': col.id,
+      'aria-label': `${col.label}: ${count} kucing`,
+      title: `${col.label} — ${count} kucing`,
+      style: `background:${col.hex};flex:${count};`,
+      onclick: ()=>{
+        // toggle filter by color
+        currentFilter = (currentFilter === col.id) ? 'all' : col.id;
+        $$('#dex-filter button').forEach(b=>b.classList.toggle('active', b.dataset.filter === currentFilter));
+        renderDex();
+      },
+    });
+    strip.appendChild(seg);
+  });
+  // kalau semua segmen kosong (semua warna 0), hide strip
+  if(strip.children.length === 0){
+    strip.classList.add('hide');
   }
 }
 

@@ -1279,6 +1279,21 @@ main{flex:1;display:flex;flex-direction:column;position:relative;overflow:hidden
   box-shadow:0 2px 6px rgba(232,128,76,.4);
 }
 
+/* C1 enhancement: mini distribusi warna di Meongdex cork-head */
+.dex-color-strip{
+  display:flex;height:10px;border-radius:999px;overflow:hidden;
+  gap:2px;padding:2px;background:var(--cream-deep,#F5EBDA);
+  border:1px solid var(--line,#E4D5BE);margin-bottom:12px;
+}
+.dex-color-strip.hide{display:none;}
+.dex-color-strip .dcs-seg{
+  border:none;cursor:pointer;padding:0;min-width:14px;
+  border-radius:999px;transition:transform .12s ease, opacity .12s ease;
+  position:relative;
+}
+.dex-color-strip .dcs-seg:hover{transform:scaleY(1.2);opacity:.85;}
+.dex-color-strip .dcs-seg.active{outline:2px solid var(--charcoal,#3A2E2A);outline-offset:1px;}
+
 /* Tantangan foto kreatif honor-system (Bagian 2.5 addendum) */
 .honor-challenges{
   margin-top:14px;padding:12px 14px;
