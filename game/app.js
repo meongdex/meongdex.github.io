@@ -2174,6 +2174,7 @@ async function openCatDetail(id){
     favBtn.classList.toggle('active', now);
     $('#fav-label').textContent = now ? 'Hapus favorit' : 'Favorit';
     renderDex();
+    triggerSyncAfterSave(); // auto-sync metadata (favorit)
   });
   $('#detail-rename').addEventListener('click', ()=> renameCat(c));
   $('#detail-delete').addEventListener('click', ()=> deleteCatConfirm(c));
@@ -2200,6 +2201,7 @@ async function renameCat(c){
     toast('Nama diperbarui','',ICONS.check);
     closeSheet();
     renderDex(); renderHome();
+    triggerSyncAfterSave(); // auto-sync (rename mengubah cat entry)
   });
 }
 async function deleteCatConfirm(c){
@@ -2219,6 +2221,7 @@ async function deleteCatConfirm(c){
     toast('Kartu dihapus','warn',ICONS.warn);
     closeSheet();
     renderDex(); renderHome();
+    triggerSyncAfterSave(); // auto-sync (delete mengubah koleksi)
   });
 }
 
@@ -4058,6 +4061,58 @@ const Auth = {
     renderHome();
   },
 
+  /**
+   * Pull otomatis dari server saat app load (background, non-blocking).
+   * Cek apakah server punya data lebih baru — kalau ya, apply ke lokal.
+   * Setelah pull, re-render home supaya UI update dengan data terbaru.
+   */
+  async pullFromServerBackground(){
+    if(!this.isLoggedIn()) return;
+    setSyncIndicator('syncing');
+    try{
+      let r;
+      if(player.authProvider === 'google'){
+        // Google: cek apakah server punya data lebih baru
+        r = await DriveSync.pullIfNewer();
+      }else if(player.authProvider === 'facebook'){
+        r = await FbSync.pullFromServer();
+      }
+      if(r && r.ok){
+        if(r.action === 'pulled'){
+          // data berubah, re-render
+          currentCatsCache = await allCats();
+          renderHome();
+          renderDex();
+          toast('Progres diperbarui dari server', '', ICONS.check);
+        }
+        setSyncIndicator('synced');
+      }else if(r && r.expired){
+        // token expired, prompt re-login
+        setSyncIndicator('error');
+        toast('Sesi login kedaluwarsa. Login ulang di Pengaturan.', 'warn', ICONS.warn);
+      }else{
+        setSyncIndicator('idle');
+      }
+    }catch(err){
+      console.warn('pullFromServerBackground error', err);
+      setSyncIndicator('idle');
+    }
+  },
+
+  /**
+   * Cek apakah token masih valid. Google token expired 1 jam, FB token expired ~60 hari.
+   * Kalau expired, hapus token + prompt re-login (jangan auto-relogin — butuh gesture user).
+   */
+  isTokenLikelyExpired(){
+    if(!player.authToken) return true;
+    // Google: cek kalau ada lastSyncAt > 55 menit lalu (token Google 1 jam)
+    if(player.authProvider === 'google' && player.lastSyncAt){
+      const elapsed = Date.now() - new Date(player.lastSyncAt).getTime();
+      if(elapsed > 55 * 60 * 1000) return true; // > 55 menit
+    }
+    return false;
+  },
+
   /** Lanjut ke onboarding atau home setelah pilih storage. */
   _proceedAfterChoice(){
     if(!player.onboarded){
@@ -4158,6 +4213,9 @@ const DriveSync = {
     if(player.authProvider !== 'google' || !player.authToken){
       return { ok:false, error:'Belum login Google' };
     }
+    if(Auth.isTokenLikelyExpired()){
+      return { ok:false, expired:true, error:'Token Google kedaluwarsa. Login ulang.' };
+    }
     try{
       const data = await this._collectBackupData();
       const jsonStr = JSON.stringify(data);
@@ -4192,6 +4250,49 @@ const DriveSync = {
       return { ok:true, action:'pushed' };
     }catch(err){
       console.error('DriveSync.syncNow error', err);
+      // cek apakah error 401 (token expired)
+      if(err.message && err.message.includes('401')){
+        return { ok:false, expired:true, error:'Token Google kedaluwarsa.' };
+      }
+      return { ok:false, error:err.message || String(err) };
+    }
+  },
+
+  /**
+   * Pull dari server kalau data server lebih baru (untuk cross-device sync awal session).
+   * Tidak push — hanya cek + pull kalau server lebih kaya/baru.
+   * Return { ok, action:'pulled'|'none', expired? }
+   */
+  async pullIfNewer(){
+    if(player.authProvider !== 'google' || !player.authToken){
+      return { ok:false, error:'Belum login Google' };
+    }
+    if(Auth.isTokenLikelyExpired()){
+      return { ok:false, expired:true, error:'Token Google kedaluwarsa.' };
+    }
+    try{
+      let fileId = player.driveFileId;
+      if(!fileId){
+        const existing = await this.findBackupFile();
+        if(!existing) return { ok:true, action:'none' }; // belum ada backup
+        fileId = existing.id;
+      }
+      const serverData = await this.downloadBackupFile(fileId);
+      if(!serverData) return { ok:true, action:'none' };
+      const localData = await this._collectBackupData();
+      if(this._shouldPullFromServer(localData, serverData)){
+        await this._applyBackupData(serverData);
+        player.driveFileId = fileId;
+        player.lastSyncAt = new Date().toISOString();
+        Store.save(player);
+        return { ok:true, action:'pulled' };
+      }
+      return { ok:true, action:'none' };
+    }catch(err){
+      console.error('DriveSync.pullIfNewer error', err);
+      if(err.message && err.message.includes('401')){
+        return { ok:false, expired:true, error:'Token Google kedaluwarsa.' };
+      }
       return { ok:false, error:err.message || String(err) };
     }
   },
@@ -4332,16 +4433,64 @@ const FbSync = {
 let syncDebounceTimer = null;
 function triggerSyncAfterSave(){
   if(!Auth.isLoggedIn()) return;
+  if(Auth.isTokenLikelyExpired()){
+    setSyncIndicator('error');
+    toast('Sesi login kedaluwarsa. Login ulang di Pengaturan > Akun & Sync.', 'warn', ICONS.warn);
+    return;
+  }
+  setSyncIndicator('syncing');
   if(syncDebounceTimer) clearTimeout(syncDebounceTimer);
   syncDebounceTimer = setTimeout(async ()=>{
+    let r;
     if(player.authProvider === 'google'){
-      const r = await DriveSync.syncNow();
-      if(!r.ok) console.warn('Auto-sync Google gagal', r.error);
+      r = await DriveSync.syncNow();
     }else if(player.authProvider === 'facebook'){
-      const r = await FbSync.syncNow();
-      if(!r.ok) console.warn('Auto-sync Facebook gagal', r.error);
+      r = await FbSync.syncNow();
+    }
+    if(r && r.ok){
+      setSyncIndicator('synced');
+      updateAccountStatus();
+    }else if(r && r.expired){
+      setSyncIndicator('error');
+      toast('Sesi login kedaluwarsa. Login ulang di Pengaturan.', 'warn', ICONS.warn);
+    }else{
+      setSyncIndicator('idle');
+      if(r) console.warn('Auto-sync gagal', r.error);
     }
   }, CONFIG.AUTH.SYNC_DEBOUNCE_MS);
+}
+
+/**
+ * Sync indicator UI di Beranda. State: 'idle' (hidden), 'syncing' (spinner),
+ * 'synced' (checkmark, fade out after 2s), 'error' (warning, persistent).
+ */
+function setSyncIndicator(state){
+  const ind = $('#sync-indicator');
+  if(!ind) return;
+  // skip kalau belum login atau bukan di home screen
+  if(!Auth.isLoggedIn()){
+    ind.classList.remove('active','syncing','synced','error');
+    return;
+  }
+  ind.classList.add('active');
+  ind.classList.remove('syncing','synced','error');
+  if(state === 'syncing'){
+    ind.classList.add('syncing');
+    ind.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="spin"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>';
+    ind.setAttribute('aria-label','Mensync...');
+  }else if(state === 'synced'){
+    ind.classList.add('synced');
+    ind.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>';
+    ind.setAttribute('aria-label','Tersync');
+    setTimeout(()=>{ ind.classList.remove('active','synced'); }, 2500);
+  }else if(state === 'error'){
+    ind.classList.add('error');
+    ind.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4M12 17h.01M10.3 3.9L1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg>';
+    ind.setAttribute('aria-label','Sync gagal');
+  }else{
+    // idle — hide
+    ind.classList.remove('active');
+  }
 }
 
 // Handler untuk layar pilih storage
@@ -4767,6 +4916,13 @@ function fixSvgA11y(){
     go('storage-choice');
   }else if(player.onboarded){ go('home'); }
   else { go('onboarding'); }
+  // Auth & sync: pull otomatis dari server saat app load kalau logged in.
+  // Tujuan: cross-device sync di awal session — kalau pemain main di HP lain
+  // tadi, progres terbaru langsung muncul di device ini. Non-blocking, jangan
+  // tunggu — UI sudah render duluan, pull update data di background.
+  if(Auth.isLoggedIn()){
+    Auth.pullFromServerBackground();
+  }
   fixSvgA11y();
   // re-run a11y fix setelah render dinamis (pemanggilan internal di go() sudah handle via DOM mutation)
   const obs = new MutationObserver(()=> fixSvgA11y());
