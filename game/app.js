@@ -1035,7 +1035,183 @@ $('#btn-discard').addEventListener('click', ()=>{
   toast('Kartu dibuang','warn',ICONS.warn);
   go('home');
 });
-$('#btn-save-card').addEventListener('click', saveCat);
+$('#btn-save-card').addEventListener('click', ()=>{
+  // Bond/trust level (Bagian 2.2 addendum): sebelum simpan, tanyakan apakah
+  // ini kucing yang sama dengan yang sudah ada di Meongdex. Kalau ya, naikkan
+  // trust level & simpan foto sebagai galeri tambahan di kartu yang sama,
+  // alih-alih membuat entri baru.
+  promptBondBeforeSave();
+});
+
+/**
+ * Cari kandidat "kucing yang sama" dari koleksi existing.
+ * Strategi sederhana: kucing dengan warna sama, diurutkan by jarak lokasi
+ * terdekat (kalau ada koordinat). Batasi 5 kandidat teratas.
+ */
+function findBondCandidates(allCats, newCat){
+  const candidates = (allCats || []).filter(c=> c.color === newCat.color);
+  // kalau ada koordinat, urutkan by jarak terdekat
+  if(newCat.lat != null && newCat.lon != null){
+    candidates.sort((a,b)=>{
+      const da = (a.lat!=null && a.lon!=null)
+        ? Math.hypot(a.lat-newCat.lat, a.lon-newCat.lon)
+        : 9999;
+      const db = (b.lat!=null && b.lon!=null)
+        ? Math.hypot(b.lat-newCat.lat, b.lon-newCat.lon)
+        : 9999;
+      return da - db;
+    });
+  }
+  return candidates.slice(0, 5);
+}
+
+/**
+ * Hitung trust level 1-5 dari jumlah kunjungan.
+ * Setiap 2 kunjungan naik 1 level, maks 5.
+ */
+function trustLevelFromVisits(visits){
+  if(!visits || visits < 1) return 1;
+  return Math.min(5, 1 + Math.floor((visits - 1) / 1));
+}
+
+function promptBondBeforeSave(){
+  if(!pendingCat) return;
+  const candidates = findBondCandidates(currentCatsCache, pendingCat);
+  if(candidates.length === 0){
+    // tidak ada kandidat — langsung simpan sebagai entri baru
+    saveCat();
+    return;
+  }
+  // tampilkan sheet konfirmasi
+  const content = el('div');
+  const candidateHtml = candidates.map(c=>{
+    const d = new Date(c.date);
+    const dateStr = d.toLocaleDateString('id-ID',{day:'numeric',month:'short',year:'numeric'});
+    const lvl = trustLevelFromVisits(c.visits || 1);
+    return `
+      <label class="bond-cand" data-id="${c.id}">
+        <input type="radio" name="bond-id" value="${c.id}" style="margin-right:8px;">
+        <div class="bond-thumb" style="background-image:url('${c.photo}');"></div>
+        <div class="bond-info">
+          <div class="bond-name">${escapeHtml(c.name)} <span class="bond-id mono">#${c.id.replace('MDX-','')}</span></div>
+          <div class="bond-meta muted">${dateStr} · trust Lv ${lvl} · ${(c.visits||1)} kunjungan</div>
+        </div>
+      </label>`;
+  }).join('');
+  content.innerHTML = `
+    <h3>Kucing yang sama?</h3>
+    <p class="muted" style="font-size:13px;line-height:1.5;">Apakah ini kucing yang sama dengan yang sudah ada di Meongdex-mu? Kalau ya, foto ini akan masuk sebagai kunjungan tambahan ke kartu yang sudah ada (trust level naik), bukan kartu baru.</p>
+    <div class="stack gap-8 mt-12">
+      <label class="bond-cand" data-id="">
+        <input type="radio" name="bond-id" value="" checked style="margin-right:8px;">
+        <div class="bond-thumb bond-thumb-new">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+        </div>
+        <div class="bond-info">
+          <div class="bond-name">Bukan, simpan sebagai kartu baru</div>
+          <div class="bond-meta muted">Kucing ini berbeda dengan yang sudah ada</div>
+        </div>
+      </label>
+      ${candidateHtml}
+    </div>
+    <div class="row gap-8 mt-16">
+      <button class="btn secondary block" id="bond-cancel">Batal</button>
+      <button class="btn block" id="bond-ok">Lanjut</button>
+    </div>`;
+  openSheet(content);
+
+  $('#bond-cancel').addEventListener('click', closeSheet);
+  $('#bond-ok').addEventListener('click', ()=>{
+    const chosenId = (content.querySelector('input[name="bond-id"]:checked') || {}).value || '';
+    closeSheet();
+    if(chosenId){
+      // simpan sebagai kunjungan tambahan ke kartu existing
+      bondToExistingCat(chosenId).catch(err=>{
+        console.error('bond error', err);
+        toast('Gagal menyimpan kunjungan, coba lagi','warn',ICONS.warn);
+      });
+    }else{
+      // simpan sebagai entri baru (alur normal)
+      saveCat();
+    }
+  });
+}
+
+/**
+ * Tambah kunjungan + galeri foto ke kartu yang sudah ada.
+ * Naikkan trust level. Beri XP lebih kecil dari kucing baru (karena bukan entri baru).
+ */
+async function bondToExistingCat(existingId){
+  if(!pendingCat) return;
+  const existing = await getCat(existingId);
+  if(!existing){
+    toast('Kucing tidak ditemukan, coba lagi','warn',ICONS.warn);
+    return;
+  }
+  const btn = $('#btn-save-card'); if(btn) btn.disabled = true;
+  try{
+    // gabungkan foto baru ke galeri
+    const gallery = Array.isArray(existing.gallery) ? existing.gallery.slice() : [];
+    gallery.push({ photo: pendingCat.photo, date: pendingCat.date, foodUsed: pendingCat.foodUsed });
+    // simpan maks 6 foto di galeri (rolling window) supaya IndexedDB tidak bengkak
+    while(gallery.length > 6) gallery.shift();
+    const visits = (existing.visits || 1) + 1;
+    const oldTrust = trustLevelFromVisits(existing.visits || 1);
+    const newTrust = trustLevelFromVisits(visits);
+    const updated = Object.assign({}, existing, {
+      visits,
+      gallery,
+      lastVisitDate: pendingCat.date,
+    });
+    await addCat(updated);
+
+    // XP: kunjungan tambahan hanya XP_PER_CAT (tanpa rarity bonus, agar tidak farmable)
+    const oldLevel = levelFromXp(player.xp);
+    const gain = CONFIG.XP_PER_CAT;
+    player.xp += gain;
+    player.fed += 1;
+
+    // sesi berburu juga berlaku untuk kunjungan ulang
+    const now = Date.now();
+    let sessionBonus = 0;
+    let sessionCount = 1;
+    if(player.sessionStart && (now - player.sessionStart) < CONFIG.SESSION_WINDOW_MS){
+      player.sessionCatCount += 1;
+      sessionCount = player.sessionCatCount;
+      sessionBonus = Math.min(CONFIG.SESSION_BONUS_CAP, (sessionCount-1) * CONFIG.SESSION_BONUS_PER_CAT);
+      player.xp += sessionBonus;
+    } else {
+      player.sessionStart = now;
+      player.sessionCatCount = 1;
+    }
+
+    Store.save(player);
+    currentCatsCache = await allCats();
+    pendingCat = null;
+    if(btn) btn.disabled = false;
+
+    toast(`Kunjungan ke-${visits} untuk ${existing.name}! +${gain} XP`, 'success', ICONS.paw);
+    if(navigator.vibrate) navigator.vibrate([10]);
+    if(newTrust > oldTrust){
+      setTimeout(()=> toast(`Trust level naik ke Lv ${newTrust}! ${newTrust>=5?'Sahabat Karib!':''}`, 'gold', ICONS.star), 600);
+    }
+    if(sessionBonus > 0){
+      setTimeout(()=> toast(`Bonus sesi berburu: +${sessionBonus} XP (${sessionCount} kucing)`, 'success', ICONS.paw), 1000);
+    }
+
+    const newLevel = levelFromXp(player.xp);
+    if(newLevel > oldLevel){
+      setTimeout(()=> showLevelUp(newLevel), 800);
+      setTimeout(()=>{ renderHome(); go('dex'); }, 1500);
+    }else{
+      setTimeout(()=>{ renderHome(); go('dex'); }, 700);
+    }
+  }catch(err){
+    console.error(err);
+    if(btn) btn.disabled = false;
+    toast('Gagal menyimpan kunjungan','warn',ICONS.warn);
+  }
+}
 
 async function saveCat(){
   if(!pendingCat) return;
@@ -1051,6 +1227,9 @@ async function saveCat(){
     if(!pendingCat.name || pendingCat.name.startsWith('Kucing Tanpa Nama')){
       // biarkan default
     }
+    // Bond/trust: cat baru selalu mulai dengan visits=1, trust Lv 1
+    pendingCat.visits = 1;
+    pendingCat.gallery = [];
     await addCat(pendingCat);
     // refresh cache SEBELUM cek challenge (butuh data terbaru)
     currentCatsCache = await allCats();
@@ -1310,18 +1489,55 @@ async function openCatDetail(id){
   const badgeHtml = myBadges.length ? `<div class="badge-grid">${myBadges.map(b=>
     `<span class="badge-chip blush"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9 12l2 2 4-4"/></svg>${b.label}</span>`
   ).join('')}</div>` : '';
+
+  // --- Bond/trust level (Bagian 2.2 addendum) ---
+  const visits = c.visits || 1;
+  const trustLvl = trustLevelFromVisits(visits);
+  const isBestFriend = trustLvl >= 5;
+  const trustDots = Array.from({length:5}, (_,i)=>
+    `<span class="trust-dot ${i<trustLvl?'filled':''}"></span>`
+  ).join('');
+  const trustHtml = `
+    <div class="trust-block ${isBestFriend?'best-friend':''}">
+      <div class="trust-head">
+        <span class="trust-label">IKATAN</span>
+        ${isBestFriend ? '<span class="trust-badge">Sahabat Karib</span>' : ''}
+      </div>
+      <div class="trust-row">
+        <div class="trust-dots">${trustDots}</div>
+        <span class="trust-meta mono">Lv ${trustLvl} · ${visits} kunjungan</span>
+      </div>
+    </div>`;
+
+  // --- Galeri foto kunjungan (Bagian 2.2 addendum) ---
+  const gallery = Array.isArray(c.gallery) ? c.gallery : [];
+  const galleryHtml = gallery.length > 0 ? `
+    <div class="gallery-block">
+      <div class="gallery-label">KUNJUNGAN LAIN</div>
+      <div class="gallery-strip">
+        ${gallery.map(g=>{
+          const gd = new Date(g.date);
+          const gs = gd.toLocaleDateString('id-ID',{day:'numeric',month:'short'});
+          return `<div class="gallery-thumb" style="background-image:url('${g.photo}');" title="${gs}"></div>`;
+        }).join('')}
+      </div>
+    </div>` : '';
+
   content.innerHTML = `
     <h3>${escapeHtml(c.name)}</h3>
     <p class="mono" style="font-size:12px;color:var(--text-soft);margin-bottom:12px;">#${c.id} · ${d.toLocaleDateString('id-ID',{day:'numeric',month:'long',year:'numeric'})}</p>
     <div class="trading-card ${rarClass}${skinClass}" style="width:100%;transform:none;margin-bottom:14px;">
       <div class="id">#${c.id.replace('MDX-','')}</div>
       <div class="rarity-tag">${rar.label}</div>
+      ${isBestFriend ? '<div class="best-friend-pin">Sahabat Karib</div>' : ''}
       <div class="photo" style="height:200px;"><img src="${c.photo}" alt="${escapeHtml(c.name)}"></div>
       <h4>${escapeHtml(c.name)}</h4>
       <div class="sub">${d.toLocaleDateString('id-ID',{day:'numeric',month:'short',year:'numeric'})} · ${locText}</div>
       <div class="tag-row"><span>${colorLabel}</span><span>${rarLabel}</span><span>${c.verifiedByAI?'Terverifikasi AI':'Konfirmasi manual'}</span></div>
       <div class="quote">"${escapeHtml(c.quote)}"</div>
     </div>
+    ${trustHtml}
+    ${galleryHtml}
     ${badgeHtml}
     <div class="row gap-8" style="flex-wrap:wrap;">
       <span class="pill">${c.verifiedByAI?'AI':'Manual'}</span>

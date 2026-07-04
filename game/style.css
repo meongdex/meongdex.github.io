@@ -1214,3 +1214,67 @@ main{flex:1;display:flex;flex-direction:column;position:relative;overflow:hidden
   display:inline-flex;align-items:center;gap:5px;
   font-size:11px;font-family:'JetBrains Mono',monospace;color:var(--terracotta-deep,#C9652F);
 }
+
+/* Bond/trust level (Bagian 2.2 addendum) */
+.bond-cand{
+  display:flex;align-items:center;gap:10px;padding:10px;
+  background:var(--paper);border:1px solid var(--line);border-radius:12px;
+  cursor:pointer;transition:border-color .15s ease;
+}
+.bond-cand:hover{border-color:var(--terracotta,#E8804C);}
+.bond-cand input[type=radio]{flex-shrink:0;}
+.bond-cand .bond-thumb{
+  width:48px;height:48px;border-radius:10px;background-size:cover;background-position:center;
+  flex-shrink:0;border:1px solid var(--line);
+}
+.bond-cand .bond-thumb-new{
+  display:grid;place-items:center;background:rgba(232,128,76,.1);color:var(--terracotta-deep,#C9652F);
+}
+.bond-cand .bond-thumb-new svg{width:20px;height:20px;}
+.bond-cand .bond-info{flex:1;min-width:0;}
+.bond-cand .bond-name{font-weight:600;font-size:13px;color:var(--charcoal);font-family:'Fredoka',sans-serif;}
+.bond-cand .bond-name .bond-id{font-size:11px;color:var(--text-mute,#8a7566);margin-left:4px;}
+.bond-cand .bond-meta{font-size:11px;color:var(--text-soft,#5C4B44);margin-top:2px;}
+
+.trust-block{
+  margin-top:14px;padding:12px 14px;border-radius:12px;
+  background:linear-gradient(135deg,rgba(212,175,55,.08),rgba(212,175,55,.02));
+  border:1px solid rgba(212,175,55,.25);
+}
+.trust-block.best-friend{
+  background:linear-gradient(135deg,rgba(232,128,76,.15),rgba(212,175,55,.08));
+  border-color:rgba(232,128,76,.4);
+}
+.trust-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}
+.trust-label{font-size:10px;font-family:'JetBrains Mono',monospace;color:#8a6b1a;letter-spacing:.1em;font-weight:700;}
+.trust-block.best-friend .trust-label{color:var(--terracotta-deep,#C9652F);}
+.trust-badge{
+  font-size:10px;font-family:'Fredoka',sans-serif;font-weight:600;
+  background:var(--terracotta,#E8804C);color:#fff;padding:3px 8px;border-radius:999px;
+}
+.trust-row{display:flex;align-items:center;gap:10px;}
+.trust-dots{display:flex;gap:4px;}
+.trust-dot{
+  width:10px;height:10px;border-radius:999px;background:rgba(212,175,55,.2);
+  border:1px solid rgba(212,175,55,.4);transition:background .2s ease;
+}
+.trust-dot.filled{background:#D4AF37;border-color:#D4AF37;}
+.trust-block.best-friend .trust-dot.filled{background:var(--terracotta,#E8804C);border-color:var(--terracotta,#E8804C);}
+.trust-meta{font-size:11px;color:var(--text-soft,#5C4B44);}
+
+.gallery-block{margin-top:12px;}
+.gallery-label{font-size:10px;font-family:'JetBrains Mono',monospace;color:var(--teal-deep,#357569);letter-spacing:.1em;font-weight:700;margin-bottom:6px;}
+.gallery-strip{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;}
+.gallery-thumb{
+  width:64px;height:64px;border-radius:10px;background-size:cover;background-position:center;
+  flex-shrink:0;border:1px solid var(--line);
+}
+
+/* badge Sahabat Karib di pojok kartu polaroid */
+.best-friend-pin{
+  position:absolute;top:10px;right:10px;z-index:2;
+  background:var(--terracotta,#E8804C);color:#fff;
+  font-size:9px;font-family:'Fredoka',sans-serif;font-weight:600;
+  padding:3px 7px;border-radius:999px;letter-spacing:.02em;
+  box-shadow:0 2px 6px rgba(232,128,76,.4);
+}
