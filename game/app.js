@@ -392,7 +392,11 @@ const Store = {
       weeklyMissionId:'',     // id misi mingguan aktif (rotasi per ISO week)
       weeklyMissionWeek:-1,   // nomor minggu ISO saat misi ini dipilih (untuk reset otomatis)
       weeklyMissionDone:false,// flag sudah selesai minggu ini
-      weeklyMissionYear:-1,   // tahun saat misi ini dipilih (anti confused di tahun baru)
+      weeklyMissionYear:-1,   // tahun saat misu ini dipilih (anti confused di tahun baru)
+      // F1 addendum: coach-mark kontekstual — flag per elemen yang sudah dilihat
+      // sekali. Key: 'feed-throw', 'verify-ai', 'card-color', 'dex-strip', dll.
+      // Kalau key ada di object = sudah dilihat, jangan tampilkan lagi.
+      coachMarksSeen:{},
     };
   },
   load(){
@@ -598,7 +602,17 @@ function renderHome(){
   const cats = currentCatsCache;
   $('#home-level').textContent = levelFromXp(player.xp);
   $('#stat-cats').textContent = cats.length;
-  $('#stat-streak').textContent = player.streak || 0;
+  // I1 addendum: animasi "percikan" saat streak bertambah — cek prev value
+  const streakEl = $('#stat-streak');
+  const streakBox = $('#streak-box');
+  const prevStreak = parseInt(streakEl.textContent, 10) || 0;
+  const newStreak = player.streak || 0;
+  streakEl.textContent = newStreak;
+  if(newStreak > prevStreak && streakBox && !prefersReducedMotion){
+    streakBox.classList.remove('streak-up');
+    void streakBox.offsetWidth; // reflow
+    streakBox.classList.add('streak-up');
+  }
   $('#stat-xp').textContent = player.xp;
   const d = new Date();
   $('#home-date').textContent = d.toLocaleDateString('id-ID',{weekday:'long',day:'numeric',month:'long'});
@@ -3962,6 +3976,71 @@ function attachTiltToDetailCard(){
 window.addEventListener('load', ()=>{
   setTimeout(startMascotBlink, 1500);
 });
+
+/**
+ * F1 addendum: Coach-mark kontekstual.
+ * Tampilkan spotlight (lingkaran terang) di sekitar targetEl + satu baris
+ * keterangan singkat. Hanya muncul SEKALI per key — setelah ditampilkan,
+ * set player.coachMarksSeen[key] = true, tidak muncul lagi untuk pemain itu.
+ * Spotlight hilang otomatis setelah aksi pertama berhasil ATAU setelah
+ * timeout 8 detik.
+ */
+function showCoachMark(targetEl, text, key){
+  if(!targetEl || !key) return;
+  // skip kalau sudah pernah dilihat
+  if(player.coachMarksSeen && player.coachMarksSeen[key]) return;
+  // skip kalau reduced motion
+  if(prefersReducedMotion) return;
+
+  // init coachMarksSeen kalau belum ada
+  if(!player.coachMarksSeen) player.coachMarksSeen = {};
+  player.coachMarksSeen[key] = true;
+  Store.save(player);
+
+  // buat overlay + spotlight
+  const overlay = el('div', { class:'coach-mark-overlay', 'data-coach-key':key });
+  const rect = targetEl.getBoundingClientRect();
+  const spotlight = el('div', {
+    class:'coach-spotlight',
+    style:`top:${rect.top - 8}px;left:${rect.left - 8}px;width:${rect.width + 16}px;height:${rect.height + 16}px;`
+  });
+  const tip = el('div', {
+    class:'coach-tip',
+    style:`top:${rect.bottom + 12}px;left:${Math.max(12, Math.min(rect.left, window.innerWidth - 280))}px;`
+  });
+  tip.innerHTML = `<div class="coach-tip-text">${text}</div><div class="coach-tip-arrow"></div>`;
+  overlay.appendChild(spotlight);
+  overlay.appendChild(tip);
+  document.body.appendChild(overlay);
+
+  // dismiss handlers
+  let dismissed = false;
+  function dismiss(){
+    if(dismissed) return;
+    dismissed = true;
+    overlay.classList.add('out');
+    setTimeout(()=> overlay.remove(), 300);
+  }
+  // tap di mana saja = dismiss
+  overlay.addEventListener('click', dismiss, { once: true });
+  // aksi pertama di target = dismiss
+  targetEl.addEventListener('pointerdown', dismiss, { once: true });
+  // auto-dismiss 8s
+  setTimeout(dismiss, 8000);
+}
+
+// F1 addendum: trigger coach-mark saat pertama masuk screen feed
+const _origInitFeed = initFeed;
+initFeed = function(){
+  _origInitFeed();
+  // coach-mark untuk tombol Lempar Makanan — muncul 600ms setelah feed render
+  setTimeout(()=>{
+    const throwBtn = $('#btn-throw');
+    if(throwBtn){
+      showCoachMark(throwBtn, 'Tahan untuk isi daya, lepas untuk lempar makanan.', 'feed-throw');
+    }
+  }, 600);
+};
 
 /* ---------------------------------------------------------------------
    15. Service worker
