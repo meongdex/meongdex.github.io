@@ -4080,6 +4080,318 @@ initFeed = function(){
 };
 
 /* ---------------------------------------------------------------------
+   14f. Three.js 3D visual — mascot Si Oren, kartu tilt 3D, shelter viewer
+   ---------------------------------------------------------------------
+   Three.js loaded via CDN. Modul ini handle:
+   - Mascot3D: procedural cat (Si Oren) dari primitives dengan idle animation
+     (breathing, tail wag, ear twitch, blink). Tap-drag untuk rotate.
+   - Fallback ke SVG kalau WebGL tidak support.
+   - Hormati prefers-reduced-motion (matikan animation, tampil static).
+   - Mobile performance: cap pixel ratio at 2, low-poly geometry.
+   --------------------------------------------------------------------- */
+const Three3D = {
+  _scenes: [], // active scenes untuk cleanup
+  _rafId: null,
+
+  /** Cek apakah WebGL support + Three.js loaded. */
+  isSupported(){
+    if(typeof THREE === 'undefined') return false;
+    try{
+      const canvas = document.createElement('canvas');
+      return !!(window.WebGLRenderingContext && (canvas.getContext('webgl') || canvas.getContext('experimental-webgl')));
+    }catch(e){ return false; }
+  },
+
+  /** Cleanup semua scene (saat pindah screen). */
+  disposeAll(){
+    if(this._rafId) cancelAnimationFrame(this._rafId);
+    this._scenes.forEach(s=>{
+      try{
+        if(s.renderer) s.renderer.dispose();
+        if(s.scene) s.scene.traverse(obj=>{
+          if(obj.geometry) obj.geometry.dispose();
+          if(obj.material){
+            if(Array.isArray(obj.material)) obj.material.forEach(m=>m.dispose());
+            else obj.material.dispose();
+          }
+        });
+      }catch(e){}
+    });
+    this._scenes = [];
+    this._rafId = null;
+  },
+
+  /**
+   * Init 3D mascot Si Oren di container tertentu.
+   * Return true kalau sukses, false kalau fallback ke SVG.
+   */
+  initMascot3D(containerEl, canvasEl){
+    if(!this.isSupported() || !containerEl || !canvasEl) return false;
+    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    try{
+      const width = containerEl.clientWidth || 200;
+      const height = containerEl.clientHeight || 200;
+
+      // Scene + camera
+      const scene = new THREE.Scene();
+      const camera = new THREE.PerspectiveCamera(35, width/height, 0.1, 100);
+      camera.position.set(0, 0.5, 5);
+      camera.lookAt(0, 0, 0);
+
+      // Renderer
+      const renderer = new THREE.WebGLRenderer({ canvas:canvasEl, antialias:true, alpha:true });
+      renderer.setSize(width, height);
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); // cap at 2 for mobile
+      renderer.setClearColor(0x000000, 0); // transparent
+
+      // Lighting — warm cream ambient + terracotta directional
+      const ambient = new THREE.AmbientLight(0xFFF8ED, 0.7);
+      scene.add(ambient);
+      const dirLight = new THREE.DirectionalLight(0xE8804C, 0.8);
+      dirLight.position.set(2, 3, 4);
+      scene.add(dirLight);
+      const fillLight = new THREE.DirectionalLight(0x4A9B8E, 0.3);
+      fillLight.position.set(-2, 1, -2);
+      scene.add(fillLight);
+
+      // Build Si Oren cat model
+      const cat = this._buildCatModel();
+      scene.add(cat.group);
+
+      // Shadow plane (subtle)
+      const shadowGeom = new THREE.CircleGeometry(1.2, 32);
+      const shadowMat = new THREE.MeshBasicMaterial({ color:0x3A2E2A, transparent:true, opacity:0.1 });
+      const shadow = new THREE.Mesh(shadowGeom, shadowMat);
+      shadow.rotation.x = -Math.PI / 2;
+      shadow.position.y = -1.1;
+      scene.add(shadow);
+
+      // Tap-drag rotate control
+      let isDragging = false;
+      let prevX = 0, prevY = 0;
+      let rotY = 0, rotX = 0;
+      let autoRotY = 0;
+      const onPointerDown = (e)=>{
+        isDragging = true;
+        prevX = e.clientX || (e.touches && e.touches[0]?.clientX) || 0;
+        prevY = e.clientY || (e.touches && e.touches[0]?.clientY) || 0;
+      };
+      const onPointerMove = (e)=>{
+        if(!isDragging) return;
+        const x = e.clientX || (e.touches && e.touches[0]?.clientX) || 0;
+        const y = e.clientY || (e.touches && e.touches[0]?.clientY) || 0;
+        rotY += (x - prevX) * 0.01;
+        rotX += (y - prevY) * 0.005;
+        rotX = Math.max(-0.5, Math.min(0.5, rotX)); // clamp vertical
+        prevX = x; prevY = y;
+      };
+      const onPointerUp = ()=>{ isDragging = false; };
+      containerEl.addEventListener('pointerdown', onPointerDown);
+      window.addEventListener('pointermove', onPointerMove);
+      window.addEventListener('pointerup', onPointerUp);
+
+      // Resize handler
+      const onResize = ()=>{
+        const w = containerEl.clientWidth || 200;
+        const h = containerEl.clientHeight || 200;
+        camera.aspect = w / h;
+        camera.updateProjectionMatrix();
+        renderer.setSize(w, h);
+      };
+      window.addEventListener('resize', onResize);
+
+      // Animation loop
+      const clock = new THREE.Clock();
+      const sceneObj = { scene, renderer, camera, cat, containerEl, onResize, onPointerDown, onPointerMove, onPointerUp };
+      this._scenes.push(sceneObj);
+
+      const animate = ()=>{
+        this._rafId = requestAnimationFrame(animate);
+        const t = clock.getElapsedTime();
+
+        if(!reducedMotion){
+          // Auto slow rotate (kalau tidak dragging)
+          if(!isDragging) autoRotY += 0.003;
+          // Breathing (scale body slightly)
+          const breath = 1 + Math.sin(t * 1.5) * 0.02;
+          cat.body.scale.set(breath, breath, breath);
+          // Tail wag
+          if(cat.tail) cat.tail.rotation.z = Math.sin(t * 2) * 0.15;
+          // Ear twitch (random-ish)
+          if(cat.earL) cat.earL.rotation.z = Math.sin(t * 3.7) * 0.05;
+          if(cat.earR) cat.earR.rotation.z = -Math.sin(t * 3.3) * 0.05;
+          // Blink (every 3-4s)
+          const blinkPhase = (t % 3.5) / 3.5;
+          const blinkScale = blinkPhase > 0.95 ? 0.1 : 1;
+          if(cat.eyeL) cat.eyeL.scale.y = blinkScale;
+          if(cat.eyeR) cat.eyeR.scale.y = blinkScale;
+          // Head slight bob
+          if(cat.head) cat.head.position.y = 0.3 + Math.sin(t * 1.2) * 0.03;
+        }
+
+        cat.group.rotation.y = rotY + autoRotY;
+        cat.group.rotation.x = rotX;
+        renderer.render(scene, camera);
+      };
+      animate();
+
+      return true;
+    }catch(err){
+      console.warn('initMascot3D gagal, fallback ke SVG', err);
+      return false;
+    }
+  },
+
+  /**
+   * Build procedural cat model (Si Oren) dari Three.js primitives.
+   * Low-poly, warm colors, sesuai palette Meongdex.
+   */
+  _buildCatModel(){
+    const group = new THREE.Group();
+
+    // Materials
+    const matOren = new THREE.MeshPhongMaterial({ color:0xE8804C, shininess:20 });
+    const matOrenDeep = new THREE.MeshPhongMaterial({ color:0xC9652F, shininess:20 });
+    const matCream = new THREE.MeshPhongMaterial({ color:0xFFF8ED, shininess:10 });
+    const matDark = new THREE.MeshPhongMaterial({ color:0x3A2E2A, shininess:50 });
+    const matWhite = new THREE.MeshBasicMaterial({ color:0xffffff });
+    const matPink = new THREE.MeshPhongMaterial({ color:0xF2C6C2, shininess:30 });
+
+    // Body (sitting cat body — elongated sphere)
+    const bodyGeom = new THREE.SphereGeometry(0.8, 24, 20);
+    bodyGeom.scale(1, 1.2, 1);
+    const body = new THREE.Mesh(bodyGeom, matOren);
+    body.position.y = -0.3;
+    group.add(body);
+
+    // Belly (cream patch)
+    const bellyGeom = new THREE.SphereGeometry(0.4, 20, 16);
+    bellyGeom.scale(1, 1.3, 0.6);
+    const belly = new THREE.Mesh(bellyGeom, matCream);
+    belly.position.set(0, -0.3, 0.55);
+    group.add(belly);
+
+    // Head
+    const headGeom = new THREE.SphereGeometry(0.55, 24, 20);
+    const head = new THREE.Mesh(headGeom, matOren);
+    head.position.y = 0.35;
+    group.add(head);
+
+    // Ears (triangular — use cones)
+    const earGeom = new THREE.ConeGeometry(0.18, 0.35, 4);
+    const earL = new THREE.Mesh(earGeom, matOren);
+    earL.position.set(-0.3, 0.75, 0);
+    earL.rotation.z = 0.3;
+    group.add(earL);
+    const earR = new THREE.Mesh(earGeom, matOren);
+    earR.position.set(0.3, 0.75, 0);
+    earR.rotation.z = -0.3;
+    group.add(earR);
+
+    // Inner ears (darker)
+    const innerEarGeom = new THREE.ConeGeometry(0.1, 0.2, 4);
+    const innerEarL = new THREE.Mesh(innerEarGeom, matOrenDeep);
+    innerEarL.position.set(-0.3, 0.72, 0.05);
+    innerEarL.rotation.z = 0.3;
+    group.add(innerEarL);
+    const innerEarR = new THREE.Mesh(innerEarGeom, matOrenDeep);
+    innerEarR.position.set(0.3, 0.72, 0.05);
+    innerEarR.rotation.z = -0.3;
+    group.add(innerEarR);
+
+    // Eyes (dark spheres)
+    const eyeGeom = new THREE.SphereGeometry(0.08, 16, 12);
+    const eyeL = new THREE.Mesh(eyeGeom, matDark);
+    eyeL.position.set(-0.18, 0.4, 0.48);
+    group.add(eyeL);
+    const eyeR = new THREE.Mesh(eyeGeom, matDark);
+    eyeR.position.set(0.18, 0.4, 0.48);
+    group.add(eyeR);
+
+    // Eye highlights (tiny white spheres)
+    const highlightGeom = new THREE.SphereGeometry(0.025, 8, 6);
+    const highlightL = new THREE.Mesh(highlightGeom, matWhite);
+    highlightL.position.set(-0.16, 0.42, 0.54);
+    group.add(highlightL);
+    const highlightR = new THREE.Mesh(highlightGeom, matWhite);
+    highlightR.position.set(0.2, 0.42, 0.54);
+    group.add(highlightR);
+
+    // Nose (small pink sphere)
+    const noseGeom = new THREE.SphereGeometry(0.05, 12, 8);
+    const nose = new THREE.Mesh(noseGeom, matPink);
+    nose.position.set(0, 0.28, 0.55);
+    group.add(nose);
+
+    // Mouth (small dark sphere, half-hidden)
+    const mouthGeom = new THREE.SphereGeometry(0.06, 12, 8, 0, Math.PI*2, 0, Math.PI/2);
+    const mouth = new THREE.Mesh(mouthGeom, matDark);
+    mouth.position.set(0, 0.22, 0.53);
+    mouth.rotation.x = Math.PI;
+    group.add(mouth);
+
+    // Whiskers (thin cylinders)
+    const whiskerMat = new THREE.MeshBasicMaterial({ color:0x3A2E2A, transparent:true, opacity:0.6 });
+    const whiskerGeom = new THREE.CylinderGeometry(0.008, 0.008, 0.4, 4);
+    for(let i=0; i<3; i++){
+      // Left whiskers
+      const wl = new THREE.Mesh(whiskerGeom, whiskerMat);
+      wl.position.set(-0.4, 0.2 - i*0.06, 0.4);
+      wl.rotation.z = Math.PI/2 + (i-1)*0.1;
+      group.add(wl);
+      // Right whiskers
+      const wr = new THREE.Mesh(whiskerGeom, whiskerMat);
+      wr.position.set(0.4, 0.2 - i*0.06, 0.4);
+      wr.rotation.z = Math.PI/2 - (i-1)*0.1;
+      group.add(wr);
+    }
+
+    // Front paws (small spheres)
+    const pawGeom = new THREE.SphereGeometry(0.15, 12, 10);
+    const pawL = new THREE.Mesh(pawGeom, matOren);
+    pawL.position.set(-0.25, -0.9, 0.35);
+    pawL.scale.set(1, 0.7, 1);
+    group.add(pawL);
+    const pawR = new THREE.Mesh(pawGeom, matOren);
+    pawR.position.set(0.25, -0.9, 0.35);
+    pawR.scale.set(1, 0.7, 1);
+    group.add(pawR);
+
+    // Tail (curved cylinder behind body)
+    const tailGeom = new THREE.CylinderGeometry(0.08, 0.12, 1, 8);
+    const tail = new THREE.Mesh(tailGeom, matOren);
+    tail.position.set(0, -0.3, -0.7);
+    tail.rotation.x = 0.5;
+    tail.rotation.z = 0.3;
+    group.add(tail);
+
+    // Group slightly tilted forward (sitting pose)
+    group.rotation.x = -0.1;
+    group.position.y = 0.1;
+
+    return { group, body, head, earL, earR, eyeL, eyeR, tail };
+  },
+};
+
+// Init 3D mascot saat onboarding screen aktif (atau app load)
+window.addEventListener('load', ()=>{
+  setTimeout(()=>{
+    const container = $('#mascot-3d-container');
+    const canvas = $('#mascot-3d-canvas');
+    const svgFallback = $('#mascot-svg-fallback');
+    if(!container || !canvas) return;
+    const ok = Three3D.initMascot3D(container, canvas);
+    if(!ok && svgFallback){
+      // fallback ke SVG
+      container.style.display = 'none';
+      svgFallback.style.display = 'block';
+    }
+  }, 500);
+});
+
+
+/* ---------------------------------------------------------------------
    15. Service worker
    --------------------------------------------------------------------- */
 if('serviceWorker' in navigator){
