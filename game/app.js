@@ -283,7 +283,7 @@ function go(screen, opts={}){
   if(screen==='map') renderMap();
   if(screen==='shelter') renderShelter();
   if(screen==='stats') renderStats();
-  if(screen==='settings') {/* statis */}
+  if(screen==='settings') { updateStorageInfo(); }
 }
 
 document.addEventListener('click', (e)=>{
@@ -1783,10 +1783,17 @@ async function renderStats(){
     { label:'Pemburu pertama', desc:'Temukan kucing pertama', done:cats.length>=1, icon:'<path d="M12 21s-7-4.9-9.5-9C.7 8.8 2 5 5.5 5c2 0 3.3 1.3 4 2.3.7-1 2-2.3 4-2.3 3.5 0 4.8 3.8 3 7-2.5 4.1-9.5 9-9.5 9z"/>' },
     { label:'Kolektor', desc:'Koleksi 5 kucing', done:cats.length>=5, icon:'<rect x="3" y="4" width="18" height="16" rx="3"/><path d="M3 9h18"/>' },
     { label:'Pemburu sejati', desc:'Koleksi 10 kucing', done:cats.length>=10, icon:'<path d="M12 2l2.6 6.1L21 9l-5 4.4L17.4 20 12 16.6 6.6 20 8 13.4 3 9l6.4-.9L12 2z"/>' },
+    { label:'Clowder', desc:'Koleksi 20 kucing', done:cats.length>=20, icon:'<rect x="3" y="4" width="18" height="16" rx="3"/><path d="M3 9h18"/><circle cx="9" cy="14" r="1"/><circle cx="15" cy="14" r="1"/>' },
     { label:'Streak 3 hari', desc:'Berburu 3 hari berturut', done:(player.streak||0)>=3, icon:'<path d="M13 2L4 14h7l-1 8 9-12h-7z"/>' },
     { label:'Streak 7 hari', desc:'Berburu 7 hari berturut', done:(player.streak||0)>=7, icon:'<path d="M13 2L4 14h7l-1 8 9-12h-7z"/>' },
+    { label:'Streak 30 hari', desc:'Berburu 30 hari berturut', done:(player.streak||0)>=30, icon:'<path d="M13 2L4 14h7l-1 8 9-12h-7z"/>' },
     { label:'Level 5', desc:'Capai level 5', done:lvl>=5, icon:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>' },
     { label:'Level 10', desc:'Capai level 10', done:lvl>=10, icon:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>' },
+    { label:'Level 20', desc:'Capai level 20', done:lvl>=20, icon:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>' },
+    { label:'Pemburu epik', desc:'Temukan kucing epik', done:cats.some(c=>c.rarity==='epik'), icon:'<path d="M12 2l2.6 6.1L21 9l-5 4.4L17.4 20 12 16.6 6.6 20 8 13.4 3 9l6.4-.9L12 2z"/>' },
+    { label:'Legenda', desc:'Temukan kucing legendaris', done:cats.some(c=>c.rarity==='legendaris'), icon:'<path d="M12 2l2.6 6.1L21 9l-5 4.4L17.4 20 12 16.6 6.6 20 8 13.4 3 9l6.4-.9L12 2z"/>' },
+    { label:'Sahabat oren', desc:'Koleksi 3 kucing oren', done:cats.filter(c=>c.color==='oren').length>=3, icon:'<circle cx="12" cy="12" r="9"/>' },
+    { label:'Pecinta favorit', desc:'Tandai 3 kucing favorit', done:(player.favorites||[]).length>=3, icon:'<path d="M12 21s-7-4.9-9.5-9C.7 8.8 2 5 5.5 5c2 0 3.3 1.3 4 2.3.7-1 2-2.3 4-2.3 3.5 0 4.8 3.8 3 7-2.5 4.1-9.5 9-9.5 9z"/>' },
     { label:'Tantang selesai', desc:`${done.length}/${CHALLENGES.length} tantangan`, done:done.length>=CHALLENGES.length, icon:'<path d="M20 6L9 17l-5-5"/>' },
   ];
   achievements.forEach(a=>{
@@ -2081,6 +2088,74 @@ window.addEventListener('appinstalled', ()=>{
   deferredPrompt = null;
   toast('Meongdex terpasang. Cek layar utamamu!','success',ICONS.check);
 });
+// Theme toggle (dark mode)
+function applyTheme(theme){
+  document.documentElement.setAttribute('data-theme', theme);
+  $('#theme-status').textContent = theme==='dark' ? 'Gelap' : 'Terang';
+  // update theme-color meta
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if(meta) meta.content = theme==='dark' ? '#1a1614' : '#FFF8ED';
+}
+// load saved theme
+const savedTheme = localStorage.getItem('meongdex_theme') || 'light';
+applyTheme(savedTheme);
+$('#set-theme').addEventListener('click', ()=>{
+  const current = document.documentElement.getAttribute('data-theme') || 'light';
+  const next = current==='dark' ? 'light' : 'dark';
+  localStorage.setItem('meongdex_theme', next);
+  applyTheme(next);
+  if(navigator.vibrate) navigator.vibrate(10);
+  toast(next==='dark' ? 'Mode gelap aktif' : 'Mode terang aktif','',ICONS.check);
+});
+
+// Storage info
+async function updateStorageInfo(){
+  const el = $('#storage-status');
+  if(!el) return;
+  try{
+    if(navigator.storage && navigator.storage.estimate){
+      const est = await navigator.storage.estimate();
+      const used = est.usage || 0;
+      const quota = est.quota || 0;
+      const usedKB = (used/1024).toFixed(0);
+      const usedMB = (used/1024/1024).toFixed(1);
+      const cats = await allCats();
+      el.textContent = `${usedMB} MB · ${cats.length} kucing`;
+    } else {
+      const cats = await allCats();
+      el.textContent = `${cats.length} kucing tersimpan`;
+    }
+  }catch(e){
+    el.textContent = 'Tidak tersedia';
+  }
+}
+$('#set-storage').addEventListener('click', async ()=>{
+  await updateStorageInfo();
+  const cats = await allCats();
+  const content = el('div');
+  let storageLine = 'Info penyimpanan tidak tersedia di browser ini.';
+  if(navigator.storage && navigator.storage.estimate){
+    try{
+      const est = await navigator.storage.estimate();
+      const usedMB = ((est.usage||0)/1024/1024).toFixed(2);
+      const quotaMB = ((est.quota||0)/1024/1024).toFixed(0);
+      storageLine = `Terpakai: ${usedMB} MB dari ${quotaMB} MB tersedia`;
+    }catch(e){}
+  }
+  content.innerHTML = `
+    <h3>Penyimpanan</h3>
+    <p>${storageLine}</p>
+    <div class="stack gap-6 mt-12">
+      <div class="between"><span class="muted">Kucing tersimpan</span><span class="mono">${cats.length}</span></div>
+      <div class="between"><span class="muted">Foto disimpan</span><span class="mono">${cats.filter(c=>c.photo).length}</span></div>
+      <div class="between"><span class="muted">Tantangan selesai</span><span class="mono">${(player.completedChallenges||[]).length}/${CHALLENGES.length}</span></div>
+      <div class="between"><span class="muted">Favorit</span><span class="mono">${(player.favorites||[]).length}</span></div>
+    </div>
+    <p class="muted mt-12" style="font-size:11px;">Semua data (foto, lokasi, progres) hanya tersimpan lokal di perangkat ini. Tidak dikirim ke server.</p>
+    <button class="btn block mt-16" onclick="document.getElementById('overlay').classList.remove('active')">Tutup</button>`;
+  openSheet(content);
+});
+
 $('#set-sound').addEventListener('click', ()=>{
   player.soundEnabled = !player.soundEnabled;
   Store.save(player);

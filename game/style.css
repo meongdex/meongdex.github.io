@@ -28,7 +28,52 @@
   --rarity-common-deep:var(--teal-deep);
   --rarity-rare:var(--gold);
   --rarity-rare-ink:#4A3A0E;
-  /* ukuran &amp; bayangan */
+  /* dark mode flag */
+  --dm-bg:#1a1614;
+  --dm-card:#2a2420;
+  --dm-text:#f0e6dc;
+  --dm-text-soft:#b0a298;
+  --dm-text-mute:#807066;
+  --dm-line:#3a342e;
+}
+
+/* Dark mode override */
+[data-theme="dark"]{
+  --cream:#1a1614;
+  --cream-deep:#2a2420;
+  --paper:#2a2420;
+  --line:#3a342e;
+  --text-soft:#b0a298;
+  --text-mute:#807066;
+  --charcoal:#f0e6dc;
+}
+[data-theme="dark"] body{
+  background:
+    radial-gradient(circle at 8px 8px, rgba(240,230,220,0.04) 1.5px, transparent 1.5px) 0 0/26px 26px,
+    var(--cream);
+  color:var(--charcoal);
+}
+[data-theme="dark"] #app{
+  background:
+    radial-gradient(circle at 8px 8px, rgba(240,230,220,0.04) 1.5px, transparent 1.5px) 0 0/26px 26px,
+    var(--cream);
+}
+[data-theme="dark"] .app-status{color:var(--charcoal);}
+[data-theme="dark"] .app-status .sigs i{background:var(--charcoal);}
+[data-theme="dark"] .app-status .bat{border-color:var(--charcoal);}
+[data-theme="dark"] .app-status .bat::after{background:var(--charcoal);}
+[data-theme="dark"] .app-status .bat::before{background:var(--charcoal);}
+[data-theme="dark"] .cork{
+  background:
+    radial-gradient(circle at 20% 20%, rgba(0,0,0,0.15) 2px, transparent 2px) 0 0/16px 16px,
+    radial-gradient(circle at 70% 60%, rgba(0,0,0,0.12) 2px, transparent 2px) 8px 8px/20px 20px,
+    #4a3a2e;
+}
+[data-theme="dark"] .cat-scene{background:linear-gradient(180deg,#3a2e28,#2a2420);}
+[data-theme="dark"] .leaflet-container{background:#2a2420;filter:brightness(.8) saturate(.8);}
+
+/* ukuran & bayangan (lanjutan :root) */
+:root{
   --shadow-sm:0 4px 10px -6px rgba(58,46,42,0.25);
   --shadow:0 12px 28px -14px rgba(58,46,42,0.35);
   --shadow-lg:0 22px 48px -18px rgba(58,46,42,0.42);
