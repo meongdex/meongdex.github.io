@@ -382,8 +382,49 @@ function renderHome(){
   renderEventBanner();
   // tantangan
   renderChallengesCard();
+  // ringkasan mingguan (Bagian 3.8 addendum)
+  renderWeekSummary(cats);
   // kucing hari ini
   renderCotd(cats);
+}
+
+/**
+ * Ringkasan aktivitas 7 hari terakhir di Beranda.
+ * Hitung dari currentCatsCache (entri kucing dengan field date).
+ * Tampilkan jumlah kucing baru + estimasi XP yang didapat minggu ini.
+ * Kartu disembunyikan kalau belum ada aktivitas minggu ini.
+ */
+function renderWeekSummary(cats){
+  const wrap = $('#home-week');
+  if(!wrap) return;
+  const now = Date.now();
+  const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
+  const weekCats = (cats || []).filter(c=>{
+    const t = new Date(c.date).getTime();
+    return !isNaN(t) && (now - t) >= 0 && (now - t) <= WEEK_MS;
+  });
+  if(weekCats.length === 0){
+    wrap.classList.add('hide');
+    return;
+  }
+  // estimasi XP minggu ini: jumlah XP_PER_CAT + bonus rarity + bonus tantangan yang selesai minggu ini
+  // tidak disimpan per-XP per cat secara terpisah, jadi pakai estimasi sederhana dari data yang ada.
+  let xpEstimate = 0;
+  for(const c of weekCats){
+    xpEstimate += CONFIG.XP_PER_CAT;
+    const rar = c.rarity && CONFIG.RARITY_XP ? CONFIG.RARITY_XP[c.rarity] : 0;
+    if(typeof rar === 'number') xpEstimate += rar;
+  }
+  // tambahkan bonus sesi berburu minggu ini (estimasi: setiap 2+ kucing dalam sesi = +15, cap +60 per cat)
+  // sederhana: kalau ada 3+ kucing minggu ini, asumsikan 1 sesi bonus
+  if(weekCats.length >= 3){
+    xpEstimate += Math.min(
+      CONFIG.SESSION_BONUS_CAP * Math.min(weekCats.length, 2),
+      weekCats.length * CONFIG.SESSION_BONUS_PER_CAT
+    );
+  }
+  wrap.classList.remove('hide');
+  $('#week-text').textContent = `Minggu ini kamu menemukan ${weekCats.length} kucing baru dan dapat sekitar ${xpEstimate} XP. Lanjutkan!`;
 }
 
 function renderEventBanner(){
@@ -2042,6 +2083,51 @@ $('#set-about').addEventListener('click', ()=>{
     </div>
     <p class="muted mt-12" style="font-size:11px;">Foto &amp; lokasi hanya tersimpan di perangkatmu, tidak dikirim ke server mana pun.</p>
     <p class="muted mt-12" style="font-size:12px;font-style:italic;">Meongdex dibuat dengan sayang oleh Nugraha Nastya, dari Yogyakarta.</p>
+    <button class="btn block mt-16" onclick="document.getElementById('overlay').classList.remove('active')">Tutup</button>`;
+  openSheet(content);
+});
+
+// --- Bantu kucing sungguhan (Bagian 3.1 addendum) ---
+// Daftar komunitas nyata di Yogyakarta yang aktif merawat kucing jalanan.
+// Tautan keluar sederhana, tanpa integrasi donasi/pembayaran apa pun.
+const COMMUNITY_PARTNERS = [
+  {
+    name:'Animal Friends Jogja (AFJ)',
+    desc:'Organisasi nirlaba kesejahteraan satwa di Yogyakarta, aktif dalam edukasi, sterilisasi, dan adopsi kucing serta anjing terlantar sejak 2010.',
+    url:'https://www.instagram.com/animalfriendsjogja/',
+    label:'Instagram @animalfriendsjogja',
+  },
+  {
+    name:'Indonesian Street Cat Community (ISCC)',
+    desc:'Komunitas berbasis Yogyakarta yang merawat puluhan kucing tak berpemilik dan aktif melakukan street feeding rutin.',
+    url:'https://www.instagram.com/iscc.jogja/',
+    label:'Instagram @iscc.jogja',
+  },
+  {
+    name:'Peduli Kucing Pasar Jogja',
+    desc:'Jaringan relawan yang rutin memberi makan dan memantau kesehatan kucing di puluhan titik pasar se-DI Yogyakarta.',
+    url:'https://www.instagram.com/pedulikucingpasarjogja/',
+    label:'Instagram @pedulikucingpasarjogja',
+  },
+];
+
+$('#set-help-cats').addEventListener('click', ()=>{
+  const content = el('div');
+  const intro = 'Meongdex dibuat karena sayang sama kucing-kucing di sekitar kita. Kalau kamu mau bantu lebih jauh dari sekadar main game, ini beberapa komunitas nyata di Yogyakarta yang bisa kamu dukung.';
+  const list = COMMUNITY_PARTNERS.map(p=>`
+    <a class="help-cat-item" href="${p.url}" target="_blank" rel="noopener noreferrer">
+      <div class="hc-name">${p.name}</div>
+      <div class="hc-desc">${p.desc}</div>
+      <div class="hc-link">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1"/><path d="M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1"/></svg>
+        ${p.label}
+      </div>
+    </a>`).join('');
+  content.innerHTML = `
+    <h3>Kalau kamu mau bantu kucing sungguhan</h3>
+    <p class="muted" style="font-size:13px;line-height:1.5;">${intro}</p>
+    <div class="stack gap-8 mt-12">${list}</div>
+    <p class="muted mt-12" style="font-size:11px;">Tautan akan terbuka di browser. Meongdex tidak menerima donasi atau pembayaran apa pun lewat fitur ini.</p>
     <button class="btn block mt-16" onclick="document.getElementById('overlay').classList.remove('active')">Tutup</button>`;
   openSheet(content);
 });
