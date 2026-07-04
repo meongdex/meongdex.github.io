@@ -87,6 +87,24 @@ const CAT_TIPS = [
   'Grup kucing disebut "clowder" — koleksimu adalah clowder!',
 ];
 
+// H1 addendum: Kumpulan tip etika street-feeding, terpisah dari CAT_TIPS
+// (yang berisi fakta lucu). Ditulis ulang dengan gaya Meongdex sendiri,
+// berisi praktik baik yang dianjurkan pegiat kesejahteraan kucing jalanan.
+// Muncul bergantian dengan CAT_TIPS di Beranda (tip harian) + satu tip
+// etika muncul sesekali di layar penjelasan sebelum "Temukan Kucing".
+const ETHICS_TIPS = [
+  'Pilih tempat kasih makan yang konsisten dan jauh dari jalan ramai — kucing butuh merasa aman dulu sebelum makan.',
+  'Kalau kucingnya masih waspada, kasih jarak. Biarkan dia yang memutuskan mendekat, jangan paksa.',
+  'Sediakan air bersih juga, bukan cuma makanan. Terutama pas cuaca panas, air jauh lebih jarang tersedia untuk kucing jalanan.',
+  'Bersihkan sisa makanan setelah kucing selesai. Area tetap nyaman untuk warga sekitar dan tidak mengundang hama.',
+  'Porsi secukupnya saja tiap kali. Menumpuk banyak makanan sekali gus justru berisiko basi dan bikin kucing sakit.',
+  'Sterilisasi dan vaksinasi adalah kontribusi jangka panjang yang jauh lebih besar dari sekadar kasih makan. Komunitas kucing lokal butuh bantuan di sana.',
+  'Kalau kucing terlihat sakit atau terluka, jangan ditangani sendiri. Hubungi komunitas kucing atau dokter hewan terdekat.',
+  'Kucing jalangan butuh waktu untuk percaya. Konsisten datang ke titik yang sama bikin mereka lebih tenang dari minggu ke minggu.',
+  'Hindari memberi makanan manusia yang asin atau berbumbu — gorengan, sisa masakan, atau cokelat berbahaya untuk kucing.',
+  'Catat pola kedatangan kucing di titik feeding-mu. Lama-lama kamu akan kenal individu mana yang rutin datang.',
+];
+
 // Event musiman (Fase 3): cek tanggal untuk event aktif
 function getCurrentEvent(){
   const now = new Date();
@@ -698,8 +716,17 @@ function renderTipCard(){
   // tip deterministik per hari (seed dari tanggal)
   const d = new Date();
   const seed = d.getFullYear()*10000 + (d.getMonth()+1)*100 + d.getDate();
-  const tip = CAT_TIPS[seed % CAT_TIPS.length];
+  // H1 addendum: bergantian CAT_TIPS (fakta lucu) vs ETHICS_TIPS (etika
+  // street-feeding) — hari ganjil = fakta, hari genap = etika. Total 20 tip
+  // berputar per hari, supaya pemain menyerap kebiasaan baik sebagai bagian
+  // dari ritual bermain, bukan info tersembunyi.
+  const isEthicsDay = (seed % 2) === 0;
+  const bank = isEthicsDay ? ETHICS_TIPS : CAT_TIPS;
+  const tip = bank[seed % bank.length];
   $('#tip-text').textContent = tip;
+  // ganti label "TIP HARI INI" jadi "ETIKA HARI INI" kalau tip etika
+  const labelEl = wrap.querySelector('.tip-label');
+  if(labelEl) labelEl.textContent = isEthicsDay ? 'ETIKA HARI INI' : 'TIP HARI INI';
   wrap.classList.remove('hide');
 }
 
@@ -847,6 +874,13 @@ function initFeed(){
   $('#feed-mood').textContent = MOODS[0];
   $('#feed-cat').classList.remove('happy','eating','mood-happy','mood-love','mood-excited');
   $('#feed-hint').textContent = 'Pilih makanan, lalu tahan tombol untuk mengisi daya lemparan.';
+  // H2 addendum: pengingat etika lembut di layar Kasih Makan. Pilih tip
+  // random sekali per sesi feed (bukan per lempar) supaya tidak mengganggu
+  // feedback fungsional yang sudah ada di #feed-hint.
+  const ethicsEl = $('#feed-ethics-hint');
+  if(ethicsEl){
+    ethicsEl.textContent = ETHICS_TIPS[Math.floor(Math.random() * ETHICS_TIPS.length)];
+  }
   $('#btn-throw').textContent = '';
   $('#btn-throw').insertAdjacentHTML('afterbegin',
     '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><path d="M12 3.5c-1.6 2-1.6 15 0 17M12 3.5c1.6 2 1.6 15 0 17M4.5 9h15M4.5 15h15"/></svg> Tahan untuk isi daya');
@@ -2892,6 +2926,67 @@ function detectTwinBadges(cats){
    --------------------------------------------------------------------- */
 $('#set-onboard').addEventListener('click', ()=>{
   onboardIdx = 0; renderOnboard(); go('onboarding');
+});
+
+// F2 addendum: Panduan Lengkap — sheet referensi permanen di Pengaturan
+// dengan FAQ accordion per topik. Mekanik lanjutan yang tidak dijelaskan
+// di onboarding singkat: bond/trust, rarity, misi mingguan, tantangan
+// foto honor-system, leaderboard, dsb.
+const GUIDE_TOPICS = [
+  {
+    title: 'Cara main dasar',
+    body: 'Temukan kucing di sekitarmu, kasih makan lewat tombol Lempar Makanan (tahan untuk isi daya, lepas untuk lempar), foto kucingnya, verifikasi AI akan cek apakah itu kucing, lalu kartu polaroid kucing itu masuk ke Meongdex-mu. Tiap kucing memberi XP, kumpulkan XP untuk naik level dan membuka dekorasi rumah.'
+  },
+  {
+    title: 'Kelangkaan kartu (rarity)',
+    body: 'Ada 4 tingkat: Biasa (teal, paling sering), Langka (emas, ~18%), Epik (ungu, ~8%), dan Legendaris (rose/magenta, ~4%, paling jarang). Kelangkaan dihitung dari kombinasi warna + roll acak — calico otomatis minimal Langka. Kartu Legendaris punya cincin shimmer prismatik yang berputar.'
+  },
+  {
+    title: 'Bond dan trust level',
+    body: 'Saat simpan kartu baru, kamu bisa tandai "kucing yang sama" dengan yang sudah ada di Meongdex-mu. Kalau ya, foto masuk sebagai kunjungan tambahan ke kartu itu (bukan kartu baru), dan trust level naik. Trust 1-5, level 5 = badge "Sahabat Karib" di pojok kartu + marker khusus di peta.'
+  },
+  {
+    title: 'Misi harian dan mingguan',
+    body: 'Misi harian: beri makan 3 kucing, bonus 100 XP, reset tiap hari. Misi mingguan: 5 misi berputar per minggu (Pemburu putih, Konsisten 3 hari, Lima kucing seminggu, Tukang kasih makan, Variasi warna), bonus 250 XP, reset tiap Senin. Misi mingguan dipilih deterministik per (tahun*53 + minggu ISO) — tiap minggu dapet misi berbeda tapi pemain yang sama di minggu yang sama selalu lihat misi yang sama.'
+  },
+  {
+    title: 'Tantangan foto honor-system',
+    body: 'Setelah verifikasi foto, ada 5 tantangan self-report: kucing menguap, latar langit sore, kucing meregangkan badan, dua kucing dalam satu foto, kucing tidur. Centang yang sesuai dengan fotomu — jujur ya. Tiap tantangan cuma bisa diselesaikan sekali, bonus 80 XP per tantangan.'
+  },
+  {
+    title: 'Papan peringkat (leaderboard)',
+    body: 'Fitur opsional — kalau belum dikonfigurasi pengembang, tetap tampil pesan ramah. Kalau aktif, kirim nama panggilan (anonim, tanpa akun) + total XP + jumlah kucing. TIDAK PERNAH foto atau lokasi dikirim. Leaderboard juga tampilkan agregat komunitas: total kucing yang sudah ditemukan seluruh pemain.'
+  },
+  {
+    title: 'Cadangkan dan pindah perangkat',
+    body: 'Pengaturan > Ekspor Meongdex untuk unduh file JSON cadangan (foto + metadata + progres). Impor Meongdex untuk pulihkan — dua mode: Gabung (tambah kucing baru, lewati yang sudah ada) atau Ganti total (hapus semua, tulis ulang dari cadangan). Lakukan ekspor rutin supaya koleksi aman kalau ganti HP atau cache dibersihkan.'
+  },
+  {
+    title: 'Etika berburu kucing',
+    body: 'Meongdex dibuat karena sayang sama kucing-kucing jalanan. Tip etika muncul bergantian dengan fakta kucing di Beranda (tip harian), dan satu tip etika muncul di layar Kasih Makan tiap sesi. Kalau kamu mau bantu lebih jauh dari sekadar main game, buka Pengaturan > Bantu kucing sungguhan untuk lihat komunitas pecinta kucing nyata di Yogyakarta.'
+  },
+  {
+    title: 'Offline dan data',
+    body: 'Meongdex adalah PWA — bisa dipasang sebagai aplikasi dari Chrome Android, dan tetap bisa dibuka offline setelah kunjungan pertama (service worker cache app shell). Model AI deteksi kucing (COCO-SSD via TensorFlow.js) diunduh sekali lalu tersimpan offline. Foto dan lokasi hanya tersimpan lokal di perangkatmu, tidak dikirim ke server mana pun.'
+  },
+];
+
+$('#set-guide').addEventListener('click', ()=>{
+  const content = el('div');
+  const topicsHtml = GUIDE_TOPICS.map((t, i)=>`
+    <details class="guide-topic" ${i===0?'open':''}>
+      <summary>
+        <span class="gt-title">${t.title}</span>
+        <svg class="gt-chev" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
+      </summary>
+      <div class="gt-body">${t.body}</div>
+    </details>`).join('');
+  content.innerHTML = `
+    <h3>Panduan Lengkap</h3>
+    <p class="muted" style="font-size:12px;">Mekanik lanjutan Meongdex. Tap tiap topik untuk buka detail.</p>
+    <div class="guide-list mt-12">${topicsHtml}</div>
+    <button class="btn block mt-16" onclick="document.getElementById('overlay').classList.remove('active')">Tutup</button>`;
+  openSheet(content);
 });
 $('#set-about').addEventListener('click', ()=>{
   const content = el('div');
