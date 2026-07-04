@@ -161,6 +161,61 @@ const QUOTES = [
   'Melirik makanan dulu sebelum melirik kamu.',
 ];
 
+// C3 addendum: bank quote dipisah per tag warna supaya kartu terasa
+// lebih personal dan tidak cepat terasa berulang setelah koleksi membesar.
+// Tiap warna punya 4-5 quote sendiri dengan nuansa yang pas sama warnanya.
+// Kalau warna tidak ada di map (mis. 'lainnya' atau value lama), fallback ke QUOTES umum.
+const QUOTES_BY_COLOR = {
+  oren: [
+    'Bulu orrennya berkilau di bawah matahari sore.',
+    'Si oren ini langsung rubuh di dekatmu begitu mencium ikan kering.',
+    'Warnanya persis seperti sunset yang lagi kamu kejar.',
+    'Kucing oren selalu tahu cara bikin hari lebih hangat.',
+  ],
+  hitam: [
+    'Seperti bayangan kecil yang tiba-tiba minta perhatian.',
+    'Mata kuningnya menatap lekat dari bulu hitam yang legam.',
+    'Misterius, tapi setelah dia mendengkur, semua curiga hilang.',
+    'Hitam legam, tapi jantungnya sehangat tepat kompor.',
+  ],
+  putih: [
+    'Seperti awan kecil yang turun ke bumi sebentar.',
+    'Bulu putihnya bersih sekali, mungkin baru saja merapikan diri.',
+    'Kucing putih selalu terlihat tenang, seolah tahu rahasia besar.',
+    'Murni dan lembut, sampai dia mengucek kepala ke sepatu kamu.',
+  ],
+  belang: [
+    'Pola belangnya unik, tidak ada kucing lain yang persis sama.',
+    'Seperti harimau kecil yang lupa caranya mengaum.',
+    'Belang hitam-putihnya kontras, seperti kue zebra yang bisa lari.',
+    'Tiap garis bulunya cerita perjalanan sendiri.',
+  ],
+  calico: [
+    'Tiga warna sekaligus, jarang ditemui dan layak dirayakan.',
+    'Kombinasi warna yang membuatnya terlihat seperti karya seni.',
+    'Calico katanya membawa keberuntungan, dan hari ini kamu dapet.',
+    'Tiga warna, satu kucing, banyak cerita.',
+  ],
+  lainnya: [
+    'Warnanya unik, susah diberi nama tapi gampang diingat.',
+    'Tidak masuk kotak mana pun, dan itu justru yang istimewa.',
+    'Bulu yang tidak biasa, kucing yang tidak biasa.',
+    'Spesial dari alam, tidak butuh label.',
+  ],
+};
+
+/**
+ * Ambil quote acak untuk warna tertentu. Kalau warna punya bank sendiri,
+ * pakai dari sana. Kalau tidak, fallback ke QUOTES umum.
+ */
+function quoteForColor(color){
+  const bank = QUOTES_BY_COLOR[color];
+  if(bank && bank.length > 0){
+    return bank[Math.floor(Math.random() * bank.length)];
+  }
+  return QUOTES[Math.floor(Math.random() * QUOTES.length)];
+}
+
 const MOODS = ['Penasaran','Waspada','Terpana','Suka makan','Mendengkur'];
 
 // C2 addendum: Misi mingguan mikro yang berputar.
@@ -1190,7 +1245,8 @@ async function buildNewCard(){
   else if(roll < 0.30 || selectedColor==='calico') rarity = (selectedColor==='calico' && roll<0.12) ? 'epik' : 'langka'; // ~18% langka
   // calico tetap minimal langka
   if(selectedColor==='calico' && rarity==='biasa') rarity='langka';
-  const quote = QUOTES[Math.floor(Math.random()*QUOTES.length)];
+  // C3 addendum: ambil quote dari bank warna spesifik supaya lebih personal
+  const quote = quoteForColor(selectedColor);
   // default nama
   const num = parseInt(id.replace(/\D/g,''),10);
   pendingCat = {
@@ -2079,16 +2135,30 @@ async function renderMap(){
   leafletMap.eachLayer(l=>{ if(l instanceof L.Marker) leafletMap.removeLayer(l); });
   withLoc.forEach(c=>{
     const colorLabel = (COLORS.find(x=>x.id===c.color)||{}).label || c.color;
+    // C4 addendum: marker khusus untuk kucing "Sahabat Karib" (trust level 5)
+    // supaya peta juga berguna untuk mengingat "di mana sahabat kucingku biasa nongkrong."
+    const isBestFriend = trustLevelFromVisits(c.visits || 1) >= 5;
+    const markerClass = isBestFriend
+      ? 'cat-marker best-friend'
+      : `cat-marker${c.rarity==='langka'?' rare':''}`;
+    const markerSvgInner = isBestFriend
+      ? '<path d="M12 21s-7-4.9-9.5-9C.7 8.8 2 5 5.5 5c2 0 3.3 1.3 4 2.3.7-1 2-2.3 4-2.3 3.5 0 4.8 3.8 3 7-2.5 4.1-9.5 9-9.5 9z"/><path d="M9 11l2 2 4-4" stroke="#fff" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>'
+      : '<path d="M12 21s-7-4.9-9.5-9C.7 8.8 2 5 5.5 5c2 0 3.3 1.3 4 2.3.7-1 2-2.3 4-2.3 3.5 0 4.8 3.8 3 7-2.5 4.1-9.5 9-9.5 9z"/>';
+    const iconSize = isBestFriend ? [42,42] : [34,34];
+    const iconAnchor = isBestFriend ? [21,42] : [17,34];
     const icon = L.divIcon({
       className: '',
-      html: `<div class="cat-marker${c.rarity==='langka'?' rare':''}" title="${escapeHtml(c.name)}"><svg class="inner" viewBox="0 0 24 24" fill="#fff"><path d="M12 21s-7-4.9-9.5-9C.7 8.8 2 5 5.5 5c2 0 3.3 1.3 4 2.3.7-1 2-2.3 4-2.3 3.5 0 4.8 3.8 3 7-2.5 4.1-9.5 9-9.5 9z"/></svg></div>`,
-      iconSize:[34,34],
-      iconAnchor:[17,34],
+      html: `<div class="${markerClass}" title="${escapeHtml(c.name)}"><svg class="inner" viewBox="0 0 24 24" fill="#fff">${markerSvgInner}</svg></div>`,
+      iconSize,
+      iconAnchor,
       popupAnchor:[0,-32],
     });
     const m = L.marker([c.lat, c.lon], {icon}).addTo(leafletMap);
     const d = new Date(c.date);
-    m.bindPopup(`<img class="pop-thumb" src="${c.photo}" alt="${escapeHtml(c.name)}"><b>${escapeHtml(c.name)}</b><br>#${c.id.replace('MDX-','')} · ${colorLabel} · ${c.rarity}<div class="pop-meta">${d.toLocaleDateString('id-ID',{day:'numeric',month:'short',year:'numeric'})}</div>`);
+    const trustInfo = isBestFriend
+      ? ` · <span style="color:#C9652F;font-weight:700;">Sahabat Karib</span> · ${c.visits||1} kunjungan`
+      : '';
+    m.bindPopup(`<img class="pop-thumb" src="${c.photo}" alt="${escapeHtml(c.name)}"><b>${escapeHtml(c.name)}</b><br>#${c.id.replace('MDX-','')} · ${colorLabel} · ${c.rarity}${trustInfo}<div class="pop-meta">${d.toLocaleDateString('id-ID',{day:'numeric',month:'short',year:'numeric'})}</div>`);
     m.on('click', ()=> playChime());
   });
   // fit bounds dengan padding

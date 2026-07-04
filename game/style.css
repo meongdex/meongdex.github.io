@@ -812,6 +812,18 @@ main{flex:1;display:flex;flex-direction:column;position:relative;overflow:hidden
 }
 .cat-marker.rare{background:var(--gold);}
 .cat-marker .inner{transform:rotate(45deg);width:18px;height:18px;}
+/* C4 addendum: marker Sahabat Karib — lebih besar, warna terracotta-deep,
+   glow halus, dan checkmark putih di tengah supaya gampang dikenali di peta. */
+.cat-marker.best-friend{
+  width:42px;height:42px;background:var(--terracotta-deep,#C9652F);
+  border:3px solid #fff;box-shadow:0 0 0 4px rgba(232,128,76,.35),0 6px 14px -3px rgba(0,0,0,.5);
+  animation:bestFriendPulse 2.4s ease-in-out infinite;
+}
+.cat-marker.best-friend .inner{width:22px;height:22px;}
+@keyframes bestFriendPulse{
+  0%,100%{box-shadow:0 0 0 4px rgba(232,128,76,.35),0 6px 14px -3px rgba(0,0,0,.5);}
+  50%{box-shadow:0 0 0 8px rgba(232,128,76,.15),0 6px 14px -3px rgba(0,0,0,.5);}
+}
 .map-empty{
   position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;
   text-align:center;gap:10px;padding:30px 22px;background:var(--cream);z-index:5;
