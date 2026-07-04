@@ -890,6 +890,7 @@ function renderCotd(cats){
    8. Alur temukan kucing (lokasi)
    --------------------------------------------------------------------- */
 let pendingLocation = null; // {lat,lon,ts}
+let practiceMode = false; // F3 addendum: flag mode latihan
 
 function startFindFlow(){
   go('perm-loc');
@@ -901,6 +902,22 @@ $('#btn-skip-loc').addEventListener('click', ()=>{
   $('#feed-loc-text').textContent = 'lokasi dilewati';
   go('feed');
   initFeed();
+});
+
+// F3 addendum: Mode latihan — kalau pemain baru belum ketemu kucing sungguhan,
+// biarkan mereka coba alur lengkap (makan -> foto -> verifikasi -> kartu) tanpa
+// tekanan. Implementasi simpel: skip lokasi + toast pengingat. Pemain tetap
+// bisa simpan kartu kalau mau — tapi dengan label "(latihan)" di nama default
+// supaya jelas itu bukan temuan nyata. Tidak ada foto contoh generik karena
+// integrity koleksi Meongdex lebih penting daripada simulasi — pemain pakai
+// foto apa saja yang mereka punya (bisa foto mainan kucing, gambar, dsb).
+$('#btn-practice').addEventListener('click', ()=>{
+  pendingLocation = null;
+  $('#feed-loc-text').textContent = 'mode latihan (lokasi dilewati)';
+  practiceMode = true; // flag global, dicek di buildNewCard untuk label "(latihan)"
+  go('feed');
+  initFeed();
+  setTimeout(()=> toast('Mode latihan aktif. Coba mekaniknya, kalau simpan kartu akan dilabeli (latihan).', '', ICONS.paw), 600);
 });
 function requestLocation(){
   if(!('geolocation' in navigator)){
@@ -1356,9 +1373,13 @@ async function buildNewCard(){
   const quote = quoteForColor(selectedColor, selectedTemperament);
   // default nama
   const num = parseInt(id.replace(/\D/g,''),10);
+  // F3 addendum: kalau practiceMode, label "(latihan)" di nama default
+  const defaultName = practiceMode
+    ? `Kucing (latihan) #${num}`
+    : `Kucing Tanpa Nama #${num}`;
   pendingCat = {
     id,
-    name: `Kucing Tanpa Nama #${num}`,
+    name: defaultName,
     photo: pendingPhoto.dataUrl,
     date: new Date().toISOString(),
     lat: pendingLocation ? pendingLocation.lat : null,
@@ -1369,9 +1390,11 @@ async function buildNewCard(){
     foodUsed: selectedFood,
     verifiedByAI: $('#verify-tag').classList.contains('err') ? false : ($('#verify-tag').classList.contains('warn') ? false : true),
     temperament: selectedTemperament, // G1 addendum: temperamen self-report
+    weatherAtCapture: lastWeatherSnapshot ? lastWeatherSnapshot.label : null, // I3 addendum
   };
   selectedColor = 'lainnya'; // reset pilihan untuk cat berikutnya
   selectedTemperament = 'unknown'; // G1 reset temperamen
+  practiceMode = false; // F3 reset practice mode
   renderNewCard();
   go('card');
 }
@@ -2075,7 +2098,7 @@ async function openCatDetail(id){
       ${isBestFriend ? '<div class="best-friend-pin">Sahabat Karib</div>' : ''}
       <div class="photo" style="height:200px;"><img src="${c.photo}" alt="${escapeHtml(c.name)}"></div>
       <h4>${escapeHtml(c.name)}</h4>
-      <div class="sub">${d.toLocaleDateString('id-ID',{day:'numeric',month:'short',year:'numeric'})} · ${locText}</div>
+      <div class="sub">${d.toLocaleDateString('id-ID',{day:'numeric',month:'short',year:'numeric'})} · ${locText}${c.weatherAtCapture ? ` · cuaca ${c.weatherAtCapture.toLowerCase()}` : ''}</div>
       <div class="tag-row"><span>${colorLabel}</span><span>${rarLabel}</span><span>${c.verifiedByAI?'Terverifikasi AI':'Konfirmasi manual'}</span>${c.temperament && c.temperament!=='unknown' ? `<span>${(TEMPERAMENTS.find(t=>t.id===c.temperament)||{}).label || c.temperament}</span>` : ''}</div>
       <div class="quote">"${escapeHtml(c.quote)}"</div>
     </div>
@@ -2352,10 +2375,15 @@ async function renderWeather(lat, lon){
     $('#w-desc').textContent = label;
     $('#w-flavor').textContent = flavor;
     strip.classList.remove('hide');
+    // I3 addendum: cache snapshot cuaca untuk dipakai saat simpan kartu baru
+    // (c.weatherAtCapture) supaya detail kartu bisa tampilkan "ditemukan saat
+    // langit cerah" dll. Tanpa API call tambahan — reuse data yang sudah ada.
+    lastWeatherSnapshot = { label, temp: t, code };
   }catch(e){
     // offline / gagal: abaikan
   }
 }
+let lastWeatherSnapshot = null; // I3 addendum: {label, temp, code} atau null
 
 function weatherInfo(code, t){
   // WMO weather code -> label + flavor + icon SVG
@@ -2618,8 +2646,19 @@ async function renderStats(){
     { label:'Tantang selesai', desc:`${done.length}/${CHALLENGES.length} tantangan`, done:done.length>=CHALLENGES.length, icon:'<path d="M20 6L9 17l-5-5"/>' },
   ];
   achievements.forEach(a=>{
-    const item = el('div',{class:'ach-item'+(a.done?' done':'')});
-    item.innerHTML = `<div class="ach-ico">${a.done?'<svg viewBox="0 0 24 24" fill="none" stroke="#D4AF37" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>':'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v4M12 16h.01"/></svg>'}</div><div class="ach-tx"><div class="ach-l">${a.label}</div><div class="ach-d">${a.desc}</div></div>${a.done?'<span class="ach-check"><svg viewBox="0 0 24 24" fill="none" stroke="#D4AF37" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg></span>':''}`;
+    // I2 addendum: vitrine style — badge belum terbuka = siluet abu-abu "???"
+    // badge terbuka = ikon penuh warna + checkmark. Layout grid rak medali.
+    const item = el('div',{class:'ach-item vitrine'+(a.done?' done':'')});
+    item.innerHTML = `
+      <div class="vitrine-medal ${a.done?'':'locked'}">
+        ${a.done
+          ? `<svg viewBox="0 0 24 24" fill="none" stroke="#D4AF37" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">${a.icon}</svg>`
+          : `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity=".35"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5h.01M14.5 9.5h.01M9 14.5h6"/></svg>`}
+      </div>
+      <div class="ach-tx">
+        <div class="ach-l">${a.done ? a.label : '???'}</div>
+        <div class="ach-d">${a.desc}</div>
+      </div>`;
     ach.appendChild(item);
   });
 }
