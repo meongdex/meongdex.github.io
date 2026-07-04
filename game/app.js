@@ -117,6 +117,20 @@ const CHALLENGES = [
   { id:'ten',        label:'Sepuluh kucing', desc:'Koleksi 10 kucing di Meongdex.', badge:'Pemburu Sejati', check:(c,all)=>all.length>=10 },
 ];
 
+// Tantangan foto kreatif honor-system (Bagian 2.5 addendum).
+// Karena model deteksi ringan tidak bisa mengenali pose/ekspresi spesifik,
+// ini self-report jujur dari pemain. Setelah verifikasi dasar lolos,
+// pemain bisa centang tantangan yang sesuai dengan foto mereka.
+// Tiap tantangan yang dicentang & belum pernah diselesaikan sebelumnya
+// memberi bonus XP. Histori tersimpan di player.completedHonor.
+const HONOR_CHALLENGES = [
+  { id:'yawn',    label:'Kucing sedang menguap',     badge:'Menguap Ringan' },
+  { id:'sunset',  label:'Latar langit sore',          badge:'Fotografer Sore' },
+  { id:'stretch', label:'Kucing sedang meregangkan badan', badge:'Peregangan' },
+  { id:'duo',     label:'Dua kucing dalam satu foto', badge:'Duo Kucing' },
+  { id:'sleep',   label:'Kucing sedang tidur',        badge:'Mimpi Manis' },
+];
+
 // flavor text lucu untuk kartu
 const QUOTES = [
   'Curiga di awal, tapi langsung akrab setelah suapan kedua.',
@@ -158,6 +172,7 @@ const Store = {
       lastEventSeen:'',   // id event terakhir yang dilihat (untuk notifikasi sekali)
       questCompletedSeen:false, // flag quest tracker sudah selesai & dilihat
       favorites:[],       // id kucing favorit
+      completedHonor:[],  // id tantangan foto kreatif honor-system yang sudah diselesaikan (Bagian 2.5)
     };
   },
   load(){
@@ -881,12 +896,16 @@ function renderVerifyResult(cats, allPreds, errored=false){
   const msg = $('#verify-msg');
   const btnText = $('#btn-confirm-text');
   const overlay = $('#detect-overlay');
+  // reset state honor challenges setiap render ulang
+  const honorWrap = $('#honor-challenges');
+  const honorList = $('#honor-list');
 
   if(errored){
     tag.className = 'ai-tag err';
     tagText.textContent = 'Verifikasi AI gagal';
     msg.textContent = 'Tidak bisa memverifikasi foto otomatis. Kamu yakin ini kucing?';
     btnText.textContent = 'Ya, ini kucing';
+    if(honorWrap) honorWrap.classList.add('hide');
     return;
   }
   if(cats && cats.length>0){
@@ -912,12 +931,57 @@ function renderVerifyResult(cats, allPreds, errored=false){
       box.appendChild(lbl);
       overlay.appendChild(box);
     });
+    // tampilkan honor challenges (Bagian 2.5 addendum)
+    renderHonorChallenges(honorWrap, honorList);
   }else{
     tag.className = 'ai-tag warn';
     tagText.textContent = 'AI belum yakin ini kucing';
     msg.textContent = 'Sepertinya AI belum yakin ini kucing. Kamu yakin ini kucing?';
     btnText.textContent = 'Ya, ini kucing';
+    // tetap tampilkan honor challenges walaupun AI belum yakin —
+    // pemain bisa konfirmasi manual + centang tantangan
+    renderHonorChallenges(honorWrap, honorList);
   }
+}
+
+/**
+ * Render honor-system challenges di layar verifikasi.
+ * Tantangan yang sudah pernah diselesaikan pemain ditandai "selesai"
+ * dan tidak bisa dicentang lagi (supaya tidak farmable).
+ */
+function renderHonorChallenges(wrap, list){
+  if(!wrap || !list) return;
+  list.innerHTML = '';
+  const completed = player.completedHonor || [];
+  HONOR_CHALLENGES.forEach(h=>{
+    const isDone = completed.includes(h.id);
+    const item = el('label', { class:'honor-item' + (isDone?' done':'') });
+    item.innerHTML = `
+      <input type="checkbox" data-honor-id="${h.id}" ${isDone?'disabled checked':''} style="margin-right:8px;">
+      <div class="honor-tx">
+        <div class="honor-t">${h.label}</div>
+        ${isDone ? '<div class="honor-badge mono">selesai · '+escapeHtml(h.badge)+'</div>' : '<div class="muted" style="font-size:11px;">badge: '+escapeHtml(h.badge)+' · +'+CONFIG.CHALLENGE_BONUS+' XP</div>'}
+      </div>`;
+    list.appendChild(item);
+  });
+  wrap.classList.remove('hide');
+}
+
+/**
+ * Baca checkbox honor-system yang dicentang pemain saat ini.
+ * Hanya kembalikan tantangan yang BENAR-BENAR baru diselesaikan
+ * (tidak sudah ada di completedHonor).
+ */
+function readNewlyCheckedHonor(){
+  const checked = [];
+  const completed = player.completedHonor || [];
+  document.querySelectorAll('#honor-list input[type=checkbox][data-honor-id]').forEach(cb=>{
+    if(cb.checked && !cb.disabled){
+      const id = cb.getAttribute('data-honor-id');
+      if(id && !completed.includes(id)) checked.push(id);
+    }
+  });
+  return checked;
 }
 
 $('#btn-retake').addEventListener('click', ()=>{
@@ -925,6 +989,8 @@ $('#btn-retake').addEventListener('click', ()=>{
   go('perm-cam');
 });
 $('#btn-confirm').addEventListener('click', ()=>{
+  // capture honor-system checkbox state sebelum pindah screen
+  pendingHonorChecked = readNewlyCheckedHonor();
   // lanjut buat kartu
   buildNewCard();
 });
@@ -934,6 +1000,7 @@ $('#btn-confirm').addEventListener('click', ()=>{
    --------------------------------------------------------------------- */
 let pendingCat = null; // cat object yang akan disimpan
 let selectedColor = 'lainnya';
+let pendingHonorChecked = []; // honor-system challenge id yang dicentang saat verifikasi (Bagian 2.5)
 
 async function buildNewCard(){
   const id = await nextCatId();
@@ -1293,6 +1360,24 @@ async function saveCat(){
       }catch(e){}
     });
 
+    // --- Tantangan honor-system (Bagian 2.5 addendum) ---
+    // Tantangan yang dicentang pemain di layar verifikasi. Self-report jujur.
+    // Tiap tantangan hanya bisa diselesaikan sekali sepanjang permainan.
+    const newlyHonor = [];
+    if(pendingHonorChecked && pendingHonorChecked.length > 0){
+      player.completedHonor = player.completedHonor || [];
+      pendingHonorChecked.forEach(id=>{
+        if(player.completedHonor.includes(id)) return; // safety: skip duplikat
+        const h = HONOR_CHALLENGES.find(x=>x.id===id);
+        if(!h) return;
+        player.completedHonor.push(id);
+        newlyHonor.push(h);
+        player.xp += CONFIG.CHALLENGE_BONUS;
+        gain += CONFIG.CHALLENGE_BONUS;
+      });
+    }
+    pendingHonorChecked = []; // reset setelah dipakai
+
     // --- Misi harian (existing) ---
     if(!player.missionDone && player.missionDate===today){
       player.missionCount += 1;
@@ -1326,6 +1411,10 @@ async function saveCat(){
     }
     newlyCompleted.forEach((ch, i)=>{
       setTimeout(()=> toast(`Tantangan selesai: ${ch.label} (+${CONFIG.CHALLENGE_BONUS} XP)`, 'gold', ICONS.star), 1100 + i*900);
+    });
+    newlyHonor.forEach((h, i)=>{
+      const offset = 1100 + newlyCompleted.length*900 + i*900;
+      setTimeout(()=> toast(`Tantangan foto: ${h.label} (+${CONFIG.CHALLENGE_BONUS} XP)`, 'gold', ICONS.star), offset);
     });
     // level up?
     if(newLevel > oldLevel){

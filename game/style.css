@@ -1278,3 +1278,31 @@ main{flex:1;display:flex;flex-direction:column;position:relative;overflow:hidden
   padding:3px 7px;border-radius:999px;letter-spacing:.02em;
   box-shadow:0 2px 6px rgba(232,128,76,.4);
 }
+
+/* Tantangan foto kreatif honor-system (Bagian 2.5 addendum) */
+.honor-challenges{
+  margin-top:14px;padding:12px 14px;
+  background:linear-gradient(135deg,rgba(74,155,142,.08),rgba(74,155,142,.02));
+  border:1px solid rgba(74,155,142,.22);border-radius:12px;
+}
+.honor-head{
+  display:flex;align-items:center;justify-content:space-between;
+  margin-bottom:8px;
+}
+.honor-label{
+  font-size:10px;font-family:'JetBrains Mono',monospace;color:var(--teal-deep,#357569);
+  letter-spacing:.1em;font-weight:700;
+}
+.honor-list{display:flex;flex-direction:column;gap:6px;}
+.honor-item{
+  display:flex;align-items:flex-start;gap:6px;padding:8px 10px;
+  background:var(--paper,#FFFDF8);border:1px solid var(--line,#E4D5BE);border-radius:10px;
+  cursor:pointer;transition:border-color .15s ease,background .15s ease;
+}
+.honor-item:hover{border-color:rgba(74,155,142,.5);}
+.honor-item.done{opacity:.65;background:rgba(74,155,142,.06);}
+.honor-item.done .honor-t{text-decoration:line-through;color:var(--text-mute,#8a7566);}
+.honor-item input[type=checkbox]{margin-top:3px;flex-shrink:0;accent-color:var(--teal-deep,#357569);}
+.honor-tx{flex:1;min-width:0;}
+.honor-t{font-size:13px;color:var(--charcoal,#3A2E2A);line-height:1.4;font-weight:500;}
+.honor-badge{font-size:10px;color:var(--teal-deep,#357569);margin-top:2px;}
