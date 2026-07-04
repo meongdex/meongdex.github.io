@@ -1306,3 +1306,25 @@ main{flex:1;display:flex;flex-direction:column;position:relative;overflow:hidden
 .honor-tx{flex:1;min-width:0;}
 .honor-t{font-size:13px;color:var(--charcoal,#3A2E2A);line-height:1.4;font-weight:500;}
 .honor-badge{font-size:10px;color:var(--teal-deep,#357569);margin-top:2px;}
+
+/* Papan peringkat (Bagian 2.10 addendum) */
+.lb-empty{
+  text-align:center;padding:20px 8px;
+  background:var(--paper,#FFFDF8);border:1px dashed var(--line,#E4D5BE);border-radius:12px;
+}
+.lb-empty-ico{
+  display:grid;place-items:center;width:56px;height:56px;margin:0 auto 10px;
+  background:rgba(232,128,76,.08);color:var(--terracotta-deep,#C9652F);border-radius:999px;
+}
+.lb-list{display:flex;flex-direction:column;gap:6px;}
+.lb-row{
+  display:grid;grid-template-columns:32px 1fr auto;align-items:center;gap:10px;
+  padding:10px 12px;background:var(--paper,#FFFDF8);
+  border:1px solid var(--line,#E4D5BE);border-radius:10px;
+}
+.lb-rank{font-family:'Fredoka',sans-serif;font-weight:700;font-size:18px;text-align:center;}
+.lb-nick{font-weight:600;font-size:13px;color:var(--charcoal,#3A2E2A);font-family:'Fredoka',sans-serif;}
+.lb-stat{font-size:13px;color:var(--terracotta-deep,#C9652F);font-weight:600;text-align:right;}
+.lb-meta{font-size:10px;color:var(--text-mute,#8a7566);grid-column:2/4;}
+.lb-submit{padding-top:14px;border-top:1px solid var(--line,#E4D5BE);}
+.lb-label{font-size:10px;font-family:'JetBrains Mono',monospace;color:var(--teal-deep,#357569);letter-spacing:.1em;font-weight:700;}

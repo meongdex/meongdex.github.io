@@ -28,6 +28,18 @@ const CONFIG = {
   RARITY_XP: { biasa:0, langka:30, epik:70, legendaris:150 },
   EVENT_XP_MULT: 2,              // multiplier XP saat event aktif
   DECOR_UNLOCK: { carpet:2, toy:3, plant:4, curtain:5, lamp:6 }, // level unlock decor
+  // Leaderboard Supabase (Bagian 2.10 addendum) — opsional, graceful fallback.
+  // Isi URL + anon key kalau sudah setup proyek Supabase. Kalau kosong, fitur
+  // leaderboard tetap muncul tapi menampilkan pesan ramah bahwa fitur belum
+  // dikonfigurasi. Tidak pernah blokir gameplay inti.
+  LEADERBOARD: {
+    SUPABASE_URL: '',                  // contoh: https://xxxx.supabase.co
+    SUPABASE_ANON_KEY: '',             // anon public key (bukan service_role)
+    TABLE_NAME: 'leaderboard',
+    FETCH_LIMIT: 10,
+    TIMEOUT_MS: 8000,                  // batas waktu fetch, supaya UX tetap responsif
+    NICKNAME_KEY: 'meongdex_nick',     // localStorage key untuk nama panggilan
+  },
 };
 
 // Tingkat kelangkaan lengkap (Fase 3): biasa < langka < epik < legendaris
@@ -2637,6 +2649,184 @@ $('#set-clear').addEventListener('click', ()=>{
 /* ---------------------------------------------------------------------
    14b. PWA install prompt
    --------------------------------------------------------------------- */
+
+/* ---------------------------------------------------------------------
+   14a. Leaderboard Supabase (Bagian 2.10 addendum) — opsional, graceful
+   ---------------------------------------------------------------------
+   Fitur ini sengaja dibuat opsional & gagal dengan sopan:
+   - Kalau LEADERBOARD.SUPABASE_URL atau SUPABASE_ANON_KEY kosong, sheet
+     menampilkan pesan ramah bahwa fitur belum dikonfigurasi.
+   - Kalau fetch gagal (offline, proyek Supabase di-pause, dll), sheet
+     menampilkan pesan "Papan peringkat sedang tidak bisa diakses, coba
+     lagi nanti" tanpa melempar error ke pemain.
+   - Tidak pernah blokir gameplay inti (temukan, kasih makan, foto,
+     koleksi lokal) yang tetap berjalan penuh tanpa backend ini.
+   - Hanya mengirim total XP + jumlah kucing + nama panggilan anonim,
+     tidak pernah foto atau lokasi.
+   --------------------------------------------------------------------- */
+const Leaderboard = {
+  isConfigured(){
+    const c = CONFIG.LEADERBOARD;
+    return !!(c.SUPABASE_URL && c.SUPABASE_ANON_KEY);
+  },
+  _headers(){
+    return {
+      'apikey': CONFIG.LEADERBOARD.SUPABASE_ANON_KEY,
+      'Authorization': 'Bearer ' + CONFIG.LEADERBOARD.SUPABASE_ANON_KEY,
+      'Content-Type': 'application/json',
+      'Prefer': 'return=representation',
+    };
+  },
+  _url(path){
+    return CONFIG.LEADERBOARD.SUPABASE_URL.replace(/\/$/, '') + path;
+  },
+  /** fetch dengan timeout supaya UI tetap responsif */
+  async _fetchWithTimeout(url, opts){
+    const ctrl = new AbortController();
+    const t = setTimeout(()=> ctrl.abort(), CONFIG.LEADERBOARD.TIMEOUT_MS);
+    try{
+      const res = await fetch(url, Object.assign({}, opts, { signal: ctrl.signal }));
+      return res;
+    }finally{
+      clearTimeout(t);
+    }
+  },
+  /** Ambil top N pemain. Return array of {nick, xp, cat_count, updated_at} atau [] kalau gagal. */
+  async fetchTop(){
+    if(!this.isConfigured()) return [];
+    const c = CONFIG.LEADERBOARD;
+    const url = this._url(`/rest/v1/${c.TABLE_NAME}?order=xp.desc&limit=${c.FETCH_LIMIT}`);
+    try{
+      const res = await this._fetchWithTimeout(url, { headers: this._headers() });
+      if(!res.ok) return [];
+      const data = await res.json();
+      return Array.isArray(data) ? data : [];
+    }catch(e){
+      return [];
+    }
+  },
+  /** Submit skor pemain. Return true kalau sukses, false kalau gagal. */
+  async submitScore(nick, xp, catCount){
+    if(!this.isConfigured()) return false;
+    if(!nick || nick.length < 1 || nick.length > 24) return false;
+    const c = CONFIG.LEADERBOARD;
+    // upsert: kalau nick sudah ada, update; kalau belum, insert.
+    // Field di tabel: nick (text, PK atau unique), xp (int), cat_count (int), updated_at (timestamptz)
+    const url = this._url(`/rest/v1/${c.TABLE_NAME}`);
+    const body = JSON.stringify({
+      nick: nick.slice(0, 24),
+      xp: Math.max(0, Math.floor(xp)),
+      cat_count: Math.max(0, Math.floor(catCount)),
+      updated_at: new Date().toISOString(),
+    });
+    try{
+      const res = await this._fetchWithTimeout(url, {
+        method: 'POST',
+        headers: Object.assign({}, this._headers(), { 'Prefer': 'resolution=merge-duplicates' }),
+        body,
+      });
+      return res.ok;
+    }catch(e){
+      return false;
+    }
+  },
+};
+
+// tombol papan peringkat di Pengaturan
+$('#set-leaderboard').addEventListener('click', async ()=>{
+  // tampilkan sheet dengan skeleton, lalu load
+  const content = el('div');
+  content.innerHTML = `
+    <h3>Papan peringkat</h3>
+    <p class="muted" style="font-size:12px;">Pemburu kucing teratas di komunitas Meongdex. Hanya nama panggilan + total XP + jumlah kucing yang dikirim — tidak ada foto atau lokasi.</p>
+    <div id="lb-body" class="mt-12">Memuat...</div>`;
+  openSheet(content);
+  const body = $('#lb-body');
+  if(!body) return;
+
+  if(!Leaderboard.isConfigured()){
+    body.innerHTML = `
+      <div class="lb-empty">
+        <div class="lb-empty-ico">
+          <svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0V4zM5 4H3v2a3 3 0 0 0 3 3M19 4h2v2a3 3 0 0 1-3 3"/></svg>
+        </div>
+        <p style="font-size:13px;line-height:1.5;">Papan peringkat belum dikonfigurasi. Fitur ini opsional — kamu tetap bisa menikmati seluruh permainan tanpa papan peringkat.</p>
+        <p class="muted" style="font-size:11px;margin-top:6px;">Pengembang bisa mengaktifkan dengan mengisi Supabase URL + anon key di <code>CONFIG.LEADERBOARD</code> di <code>game/app.js</code>.</p>
+      </div>`;
+    return;
+  }
+
+  const top = await Leaderboard.fetchTop();
+  if(top.length === 0){
+    body.innerHTML = `
+      <div class="lb-empty">
+        <div class="lb-empty-ico">
+          <svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M8 12h8"/></svg>
+        </div>
+        <p style="font-size:13px;line-height:1.5;">Papan peringkat sedang tidak bisa diakses, coba lagi nanti.</p>
+        <p class="muted" style="font-size:11px;margin-top:6px;">Fitur inti game (temukan, kasih makan, foto, koleksi) tetap berjalan penuh tanpa papan peringkat.</p>
+      </div>`;
+    return;
+  }
+
+  const rows = top.map((r, i)=>{
+    const rank = i + 1;
+    const medal = rank === 1 ? '#D4AF37' : (rank === 2 ? '#A8A8A8' : (rank === 3 ? '#C97D4A' : null));
+    const rankCell = medal
+      ? `<div class="lb-rank" style="color:${medal};">${rank}</div>`
+      : `<div class="lb-rank muted">${rank}</div>`;
+    const updated = r.updated_at ? new Date(r.updated_at).toLocaleDateString('id-ID',{day:'numeric',month:'short'}) : '';
+    return `
+      <div class="lb-row">
+        ${rankCell}
+        <div class="lb-nick">${escapeHtml(r.nick || 'anonim')}</div>
+        <div class="lb-stat mono">${r.xp || 0} XP</div>
+        <div class="lb-meta mono muted">${r.cat_count || 0} kucing · ${updated}</div>
+      </div>`;
+  }).join('');
+
+  // nama panggilan tersimpan di localStorage (anonim, tanpa akun/login)
+  const savedNick = (localStorage.getItem(CONFIG.LEADERBOARD.NICKNAME_KEY) || '').slice(0, 24);
+  body.innerHTML = `
+    <div class="lb-list">${rows}</div>
+    <div class="lb-submit mt-16">
+      <div class="lb-label">KIRIM SKOR KAMU</div>
+      <p class="muted" style="font-size:11px;margin:4px 0 8px;">Nama panggilan disimpan lokal di perangkatmu. Kirim ulang kapan saja untuk update skor terbaru.</p>
+      <div class="row gap-8">
+        <input id="lb-nick" type="text" maxlength="24" placeholder="Nama panggilan (maks 24 karakter)" value="${escapeHtml(savedNick)}" style="flex:1;min-width:0;padding:10px 12px;border:1px solid var(--line,#E4D5BE);border-radius:10px;font-family:inherit;font-size:13px;">
+        <button class="btn" id="lb-submit">Kirim</button>
+      </div>
+      <div id="lb-msg" class="mt-8" style="font-size:11px;"></div>
+    </div>`;
+
+  $('#lb-submit').addEventListener('click', async ()=>{
+    const nick = ($('#lb-nick').value || '').trim();
+    const msg = $('#lb-msg');
+    if(!nick){
+      msg.innerHTML = '<span style="color:#a8462e;">Isi nama panggilan dulu ya.</span>';
+      return;
+    }
+    if(nick.length > 24){
+      msg.innerHTML = '<span style="color:#a8462e;">Nama panggilan maksimal 24 karakter.</span>';
+      return;
+    }
+    const btn = $('#lb-submit'); btn.disabled = true; btn.textContent = 'Mengirim...';
+    const cats = await allCats();
+    const ok = await Leaderboard.submitScore(nick, player.xp, cats.length);
+    btn.disabled = false; btn.textContent = 'Kirim';
+    if(ok){
+      localStorage.setItem(CONFIG.LEADERBOARD.NICKNAME_KEY, nick);
+      msg.innerHTML = '<span style="color:var(--teal-deep,#357569);">Skor terkirim! Refresh papan peringkat dalam 1 detik...</span>';
+      setTimeout(()=> $('#set-leaderboard').click(), 1200); // re-open sheet untuk refresh
+    }else{
+      msg.innerHTML = '<span style="color:#a8462e;">Gagal mengirim. Coba lagi nanti — fitur inti game tetap berjalan tanpa ini.</span>';
+    }
+  });
+});
+
+// ---------------------------------------------------------------------
+// 14c. PWA install prompt (lanjutan)
+// ---------------------------------------------------------------------
 let deferredPrompt = null;
 window.addEventListener('beforeinstallprompt', (e)=>{
   e.preventDefault();

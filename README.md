@@ -26,6 +26,85 @@ Jejak singkat posisi proyek, diperbarui di setiap akhir batch kerja. Dipakai unt
 - **2026-07-04 (batch 12)** — Bagian 3 (sebagian) addendum selesai. (3.7) Open Graph & Twitter Card meta di root index.html: og:type, og:site_name, og:title, og:description, og:url, og:image (screenshot game-home), og:locale id_ID, twitter:card summary_large_image + mitranya. (3.8) Ringkasan mingguan di Beranda: kartu `.week-card` di antara sesi berburu dan kucing hari ini, menampilkan "Minggu ini kamu menemukan N kucing baru dan dapat sekitar X XP. Lanjutkan!" — dihitung dari entri kucing 7 hari terakhir dengan estimasi XP (XP_PER_CAT + bonus rarity + bonus sesi berburu kalau 3+ kucing). Kartu disembunyikan kalau belum ada aktivitas minggu ini. (3.1) "Bantu kucing sungguhan": tombol di Pengaturan, sheet berisi 3 komunitas nyata Yogyakarta (AFJ, ISCC, Peduli Kucing Pasar Jogja) dengan tautan keluar ke Instagram mereka, nada hangat "Meongdex dibuat karena sayang sama kucing-kucing di sekitar kita", tanpa integrasi donasi/pembayaran. Catatan asumsi: tautan Instagram dipilih karena canal publik yang umum dipakai komunitas relawan kucing di Yogyakarta; verifikasi aktif saat implementasi via pencarian sederhana — user perlu re-verifikasi sebelum publikasi luas. Verifikasi: node --check PASS, local server HTTP 200 untuk semua aset.
 - **2026-07-04 (batch 13)** — Bagian 2.2 addendum selesai. Bond/trust level + "kembaran kucing" digabung jadi satu mekanik yang jujur ke pemain. Saat klik Simpan ke Meongdex, sheet "Kucing yang sama?" muncul dengan daftar kandidat (warna sama, diurutkan by jarak lokasi terdekat, maks 5). Pilihan: (a) simpan sebagai kartu baru (default, alur lama), atau (b) tandai sebagai kucing yang sama → naikkan kunjungan (visits) pada entri existing, simpan foto baru ke galeri (rolling window maks 6 foto supaya IndexedDB tidak bengkak), XP hanya XP_PER_CAT tanpa rarity bonus supaya tidak farmable. Trust level 1-5 (1 level per kunjungan, maks 5). Detail kartu sekarang menampilkan: block "IKATAN" dengan 5 dot indicator, label kunjungan, badge "Sahabat Karib" di pojok kartu polaroid saat trust Lv 5, dan strip horizontal galeri foto kunjungan lain. Cat baru selalu mulai dengan visits=1, gallery=[]. Kembaran Ditemukan (badge lama) tetap berfungsi untuk entri yang BERBEDA tapi punya kombinasi warna identik — tidak konflik dengan bond. Verifikasi: node --check PASS, local server HTTP 200 untuk semua aset.
 - **2026-07-04 (batch 14)** — Bagian 2.5 addendum selesai. Tantangan foto kreatif honor-system: karena model deteksi ringan (COCO-SSD) tidak bisa mengenali pose/ekspresi spesifik, ini self-report jujur dari pemain. Setelah verifikasi dasar lolos (atau fallback manual), blok "TANTANGAN FOTO KREATIF" muncul di layar verifikasi dengan 5 tantangan awal: kucing menguap, latar langit sore, kucing meregangkan badan, dua kucing dalam satu foto, kucing tidur. Pemain centang yang sesuai dengan foto mereka, lalu klik "Ya, simpan". Saat saveCat dieksekusi, tiap tantangan yang dicentang & belum pernah diselesaikan sebelumnya memberi CONFIG.CHALLENGE_BONUS (80 XP) + push ke player.completedHonor. Toast notification muncul untuk tiap tantangan yang baru diselesaikan. Tantangan yang sudah selesai ditandai "selesai" dan checkbox di-disable (tidak bisa diulang, anti-farm). Field baru: player.completedHonor (array id). Variabel transisi: pendingHonorChecked. Catatan: semua self-report — kepercayaan ke pemain sesuai semangat game santai, bukan kompetisi kompetitif. Verifikasi: node --check PASS, local server HTTP 200 untuk semua aset.
+- **2026-07-04 (batch 15)** — Bagian 2.10 addendum selesai (scaffold + graceful fallback). Leaderboard Supabase: tombol "Papan peringkat" di Pengaturan, sheet menampilkan top 10 pemain (rank dengan medali emas/perak/perunggu untuk 3 besar) + form submit nama panggilan (maks 24 karakter, disimpan lokal di localStorage, anonim tanpa akun/login). Hanya mengirim total XP + jumlah kucing + nama panggilan — TIDAK PERNAH foto atau lokasi. Implementasi: modul `Leaderboard` dengan `isConfigured()`, `fetchTop()`, `submitScore()`, fetch dengan AbortController timeout 8 detik supaya UI responsif. Konfigurasi di `CONFIG.LEADERBOARD` (URL + anon key kosong dulu — pengembang isi saat siap). Graceful fallback: kalau belum dikonfigurasi → "Papan peringkat belum dikonfigurasi. Fitur ini opsional — kamu tetap bisa menikmati seluruh permainan tanpa papan peringkat." Kalau fetch gagal (offline, proyek Supabase di-pause setelah 7 hari inaktif, dll) → "Papan peringkat sedang tidak bisa diakses, coba lagi nanti." Tidak pernah blokir gameplay inti. Catatan asumsi: setup tabel Supabase + GitHub Actions cron mingguan untuk keep-alive (mencegah pause proyek free tier Supabase) didokumentasikan sebagai stretch goal — pengembang perlu setup manual lewat dashboard Supabase. Verifikasi: node --check PASS, local server HTTP 200 untuk semua aset.
+
+---
+
+## Setup Leaderboard Supabase (opsional, Bagian 2.10 addendum)
+
+Papan peringkat opsional dan **tidak wajib** untuk menikmati game. Kalau kamu (pengembang) ingin mengaktifkannya:
+
+### 1. Buat proyek Supabase gratis
+- Daftar di https://supabase.com (free tier: 500MB DB, 50k monthly active users — cukup untuk leaderboard kecil).
+- Buat proyek baru, tunggu provisioning selesai.
+- Buka **SQL Editor** di dashboard Supabase, jalankan SQL berikut untuk bikin tabel leaderboard dengan Row Level Security yang mengizinkan anon insert + select:
+
+```sql
+create table if not exists public.leaderboard (
+  nick text primary key,
+  xp integer not null default 0,
+  cat_count integer not null default 0,
+  updated_at timestamptz not null default now()
+);
+
+alter table public.leaderboard enable row level security;
+
+create policy "Anyone can read leaderboard"
+  on public.leaderboard for select
+  using (true);
+
+create policy "Anyone can upsert their score"
+  on public.leaderboard for insert
+  with check (true);
+
+create policy "Anyone can update their score"
+  on public.leaderboard for update
+  using (true);
+```
+
+### 2. Ambil URL + anon key
+- Di dashboard Supabase: **Project Settings → API**.
+- Salin **Project URL** (contoh: `https://abcdefgh.supabase.co`).
+- Salin **anon public** key (BUKAN `service_role` — anon key aman untuk client-side).
+
+### 3. Isi `CONFIG.LEADERBOARD` di `game/app.js`
+```js
+LEADERBOARD: {
+  SUPABASE_URL: 'https://abcdefgh.supabase.co',
+  SUPABASE_ANON_KEY: 'eyJhbGciOi...your-anon-key...',
+  TABLE_NAME: 'leaderboard',
+  FETCH_LIMIT: 10,
+  TIMEOUT_MS: 8000,
+  NICKNAME_KEY: 'meongdex_nick',
+},
+```
+
+### 4. (Sangat disarankan) Setup GitHub Actions cron keep-alive
+Supabase free tier otomatis **pause** proyek yang tidak ada aktivitas API selama 7 hari berturut-turut. Untuk mencegah leaderboard "mati" mendadak, tambah workflow `.github/workflows/keep-supabase-alive.yml`:
+
+```yaml
+name: Keep Supabase alive
+on:
+  schedule:
+    - cron: '0 8 * * 1'  # tiap Senin 08:00 UTC
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          curl -s -H "apikey: ${{ secrets.SUPABASE_ANON_KEY }}" \
+               -H "Authorization: Bearer ${{ secrets.SUPABASE_ANON_KEY }}" \
+               "${{ secrets.SUPABASE_URL }}/rest/v1/leaderboard?limit=1"
+```
+
+Simpan `SUPABASE_URL` dan `SUPABASE_ANON_KEY` sebagai **repository secrets** di GitHub repo `meongdex/meongdex.github.io` (Settings → Secrets and variables → Actions).
+
+### 5. Test
+- Push perubahan ke main, tunggu GitHub Pages rebuild (1-2 menit).
+- Buka https://meongdex.github.io/game/ → Pengaturan → Papan peringkat.
+- Coba kirim skor dengan nama panggilan, lalu refresh sheet — seharusnya muncul di daftar.
+
+Kalau langkah 1-5 tidak dilakukan, fitur leaderboard tetap muncul di UI tapi menampilkan pesan ramah "belum dikonfigurasi". Game tetap 100% berfungsi tanpa leaderboard.
 
 ---
 
