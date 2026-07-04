@@ -155,6 +155,9 @@ const CHALLENGES = [
   // bukan cuma jumlah. Terbuka saat pemain sudah punya minimal 1 kucing
   // untuk tiap tag warna yang tersedia.
   { id:'allcolors',  label:'Kolektor Warna Lengkap', desc:'Punya minimal 1 kucing untuk tiap tag warna.', badge:'Pelangi Kucing', check:(c,all)=>COLORS.every(col=>all.some(x=>x.color===col.id)) },
+  // G2 addendum: badge Paham Karakter — mendorong pemain benar-benar
+  // memperhatikan tiap kucing, bukan cuma spam simpan cepat.
+  { id:'temperament10', label:'Paham Karakter', desc:'Isi temperamen untuk 10 kucing berbeda.', badge:'Paham Karakter', check:(c,all)=>all.filter(x=>x.temperament && x.temperament!=='unknown').length>=10 },
 ];
 
 // Tantangan foto kreatif honor-system (Bagian 2.5 addendum).
@@ -229,8 +232,44 @@ const QUOTES_BY_COLOR = {
 /**
  * Ambil quote acak untuk warna tertentu. Kalau warna punya bank sendiri,
  * pakai dari sana. Kalau tidak, fallback ke QUOTES umum.
+ * G2 addendum: kalau temperamen diisi (bukan 'unknown'), coba cari
+ * kombinasi warna+temperamen dulu; fallback ke warna-only kalau tidak ada.
  */
-function quoteForColor(color){
+const QUOTES_BY_TEMPERAMENT = {
+  pemalu: [
+    'Butuh waktu, tapi akhirnya mendekat pelan-pelan.',
+    'Sempat mundur dua langkah sebelum akhirnya diam di tempat.',
+  ],
+  manja: [
+    'Langsung mengucek kepala ke tanganmu sejak detik pertama.',
+    'Mendengkur keras sekali, seolah sudah kenal lama.',
+  ],
+  waspada: [
+    'Mata tajam mengawasi setiap gerakanmu dari jarak aman.',
+    'Baru mendekat setelah makanan habis setengah.',
+  ],
+  usil: [
+    'Sambil makan, sesekali mainin ekornya ke arahmu.',
+    'Purwa-purwa lari, tapi balik lagi setelah dua detik.',
+  ],
+  cuek: [
+    'Makan pelan tanpa menatapmu sama sekali.',
+    'Selesai makan, langsung pergi tanpa pamit.',
+  ],
+  ramah: [
+    'Langsung ikut jalan di belakangmu setelah makan.',
+    'Menggosokkan pipi ke kakimu, tanda sudah anggap keluarga.',
+  ],
+};
+
+function quoteForColor(color, temperament){
+  // G2: kalau temperamen diisi, 50% chance pakai quote temperamen
+  if(temperament && temperament !== 'unknown' && Math.random() < 0.5){
+    const tBank = QUOTES_BY_TEMPERAMENT[temperament];
+    if(tBank && tBank.length > 0){
+      return tBank[Math.floor(Math.random() * tBank.length)];
+    }
+  }
   const bank = QUOTES_BY_COLOR[color];
   if(bank && bank.length > 0){
     return bank[Math.floor(Math.random() * bank.length)];
@@ -239,6 +278,20 @@ function quoteForColor(color){
 }
 
 const MOODS = ['Penasaran','Waspada','Terpana','Suka makan','Mendengkur'];
+
+// G1 addendum: Tag temperamen self-report saat menyimpan kartu.
+// Opsional (boleh dilewati, default "Belum diketahui"). Murni self-report,
+// sama jujurnya dengan tantangan foto honor-system — tidak ada klaim AI
+// mendeteksi kepribadian. Dipakai di G2 untuk variasi quote + flavor.
+const TEMPERAMENTS = [
+  { id:'unknown', label:'Belum diketahui', icon:'?' },
+  { id:'pemalu',   label:'Pemalu',          icon:'eye-off' },
+  { id:'manja',    label:'Manja',           icon:'heart' },
+  { id:'waspada',  label:'Waspada',         icon:'alert' },
+  { id:'usil',     label:'Usil',            icon:'play' },
+  { id:'cuek',     label:'Cuek',            icon:'minus' },
+  { id:'ramah',    label:'Ramah',           icon:'check' },
+];
 
 // C2 addendum: Misi mingguan mikro yang berputar.
 // Daftar tetap, dipilih per nomor minggu tahun berjalan (ISO week) modulo panjang daftar.
@@ -1270,6 +1323,7 @@ $('#btn-confirm').addEventListener('click', ()=>{
    --------------------------------------------------------------------- */
 let pendingCat = null; // cat object yang akan disimpan
 let selectedColor = 'lainnya';
+let selectedTemperament = 'unknown'; // G1 addendum: temperamen self-report
 let pendingHonorChecked = []; // honor-system challenge id yang dicentang saat verifikasi (Bagian 2.5)
 
 async function buildNewCard(){
@@ -1284,7 +1338,8 @@ async function buildNewCard(){
   // calico tetap minimal langka
   if(selectedColor==='calico' && rarity==='biasa') rarity='langka';
   // C3 addendum: ambil quote dari bank warna spesifik supaya lebih personal
-  const quote = quoteForColor(selectedColor);
+  // G2 addendum: lewat temperamen juga, 50% chance pakai quote temperamen
+  const quote = quoteForColor(selectedColor, selectedTemperament);
   // default nama
   const num = parseInt(id.replace(/\D/g,''),10);
   pendingCat = {
@@ -1299,8 +1354,10 @@ async function buildNewCard(){
     quote,
     foodUsed: selectedFood,
     verifiedByAI: $('#verify-tag').classList.contains('err') ? false : ($('#verify-tag').classList.contains('warn') ? false : true),
+    temperament: selectedTemperament, // G1 addendum: temperamen self-report
   };
   selectedColor = 'lainnya'; // reset pilihan untuk cat berikutnya
+  selectedTemperament = 'unknown'; // G1 reset temperamen
   renderNewCard();
   go('card');
 }
@@ -1351,6 +1408,17 @@ function renderColorPicker(){
     });
     b.appendChild(el('span',{class:'sw',style:`background:${col.hex}`}));
     b.appendChild(el('span',{}, col.label));
+    meta.appendChild(b);
+  });
+  // G1 addendum: temperamen picker (opsional, default "Belum diketahui")
+  const tempLabel = el('div',{class:'mono',style:'font-size:10px;color:var(--text-mute);text-transform:uppercase;letter-spacing:.08em;width:100%;margin-top:12px;'}, 'Sifat (opsional)');
+  meta.appendChild(tempLabel);
+  TEMPERAMENTS.forEach(t=>{
+    const b = el('button',{
+      class:'temp-opt'+(t.id===selectedTemperament?' active':''),
+      onclick:()=>{ selectedTemperament = t.id; if(pendingCat){ pendingCat.temperament = t.id; } renderColorPicker(); }
+    });
+    b.appendChild(el('span',{class:'tw'}, t.label));
     meta.appendChild(b);
   });
   // bungkus jadi grid
@@ -1957,6 +2025,33 @@ async function openCatDetail(id){
       </div>
     </div>` : '';
 
+  // --- G3 addendum: "Titipan kecil" memento naratif per kucing ---
+  // Murni kosmetik, bukan currency. Generate dari data yang SUDAH ada
+  // (galeri kunjungan + waktu-waktu kunjungan), bukan field baru.
+  let mementoHtml = '';
+  if(visits >= 3){
+    // analisis pola waktu kunjungan dari gallery + date utama
+    const allDates = [c.date, ...gallery.map(g=>g.date)].map(d=>new Date(d)).filter(d=>!isNaN(d));
+    const hours = allDates.map(d=>d.getHours());
+    const avgHour = hours.reduce((s,h)=>s+h,0) / hours.length;
+    let timeHint = '';
+    if(avgHour >= 5 && avgHour < 11) timeHint = 'pagi';
+    else if(avgHour >= 11 && avgHour < 15) timeHint = 'siang';
+    else if(avgHour >= 15 && avgHour < 18) timeHint = 'sore';
+    else timeHint = 'malam';
+    const temperLabel = (c.temperament && c.temperament!=='unknown')
+      ? (TEMPERAMENTS.find(t=>t.id===c.temperament)||{}).label
+      : null;
+    let memento = `${escapeHtml(c.name)} biasa muncul pas ${timeHint}`;
+    if(temperLabel) memento += ` — terlihat ${temperLabel.toLowerCase()} tiap ketemu`;
+    memento += '.';
+    mementoHtml = `
+      <div class="memento-block">
+        <div class="memento-label">TITIPAN KECIL</div>
+        <div class="memento-text">${memento}</div>
+      </div>`;
+  }
+
   content.innerHTML = `
     <h3>${escapeHtml(c.name)}</h3>
     <p class="mono" style="font-size:12px;color:var(--text-soft);margin-bottom:12px;">#${c.id} · ${d.toLocaleDateString('id-ID',{day:'numeric',month:'long',year:'numeric'})}</p>
@@ -1967,11 +2062,12 @@ async function openCatDetail(id){
       <div class="photo" style="height:200px;"><img src="${c.photo}" alt="${escapeHtml(c.name)}"></div>
       <h4>${escapeHtml(c.name)}</h4>
       <div class="sub">${d.toLocaleDateString('id-ID',{day:'numeric',month:'short',year:'numeric'})} · ${locText}</div>
-      <div class="tag-row"><span>${colorLabel}</span><span>${rarLabel}</span><span>${c.verifiedByAI?'Terverifikasi AI':'Konfirmasi manual'}</span></div>
+      <div class="tag-row"><span>${colorLabel}</span><span>${rarLabel}</span><span>${c.verifiedByAI?'Terverifikasi AI':'Konfirmasi manual'}</span>${c.temperament && c.temperament!=='unknown' ? `<span>${(TEMPERAMENTS.find(t=>t.id===c.temperament)||{}).label || c.temperament}</span>` : ''}</div>
       <div class="quote">"${escapeHtml(c.quote)}"</div>
     </div>
     ${trustHtml}
     ${galleryHtml}
+    ${mementoHtml}
     ${badgeHtml}
     <div class="row gap-8" style="flex-wrap:wrap;">
       <span class="pill">${c.verifiedByAI?'AI':'Manual'}</span>

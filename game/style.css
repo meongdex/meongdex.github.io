@@ -1527,3 +1527,26 @@ main{flex:1;display:flex;flex-direction:column;position:relative;overflow:hidden
   padding:0 14px 14px;font-size:13px;color:var(--text-soft,#5C4B44);
   line-height:1.55;font-family:'Plus Jakarta Sans',sans-serif;
 }
+
+/* G1 addendum: temperamen picker (mirip color-opt tapi tanpa swatch) */
+.color-grid .temp-opt{
+  display:inline-flex;align-items:center;justify-content:center;
+  padding:8px 10px;border:1.5px solid var(--line,#E4D5BE);
+  border-radius:999px;background:var(--paper,#FFFDF8);
+  font-size:11px;font-family:'JetBrains Mono',monospace;font-weight:600;
+  color:var(--text-soft,#5C4B44);cursor:pointer;transition:all .12s ease;
+}
+.color-grid .temp-opt.active{
+  border-color:var(--terracotta,#E8804C);background:rgba(232,128,76,.1);
+  color:var(--terracotta-deep,#C9652F);
+}
+.color-grid .temp-opt .tw{padding:0 4px;}
+
+/* G3 addendum: memento "Titipan kecil" — naratif kecil per kucing */
+.memento-block{
+  margin-top:12px;padding:10px 14px;border-radius:10px;
+  background:linear-gradient(135deg,rgba(242,198,194,.25),rgba(242,198,194,.08));
+  border:1px solid rgba(242,198,194,.5);
+}
+.memento-label{font-size:9px;font-family:'JetBrains Mono',monospace;color:#a8462e;letter-spacing:.1em;font-weight:700;margin-bottom:3px;}
+.memento-text{font-size:12px;color:var(--text-soft,#5C4B44);line-height:1.5;font-style:italic;font-family:'Plus Jakarta Sans',sans-serif;}
