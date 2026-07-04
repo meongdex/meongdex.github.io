@@ -346,6 +346,8 @@ function renderHome(){
   $('#mission-bar').style.width = Math.min(100, (player.missionCount/CONFIG.MISSION_GOAL)*100) + '%';
   // sesi berburu
   renderSession();
+  // quest tracker (pemain baru)
+  renderQuestTracker();
   // event musiman
   renderEventBanner();
   // tantangan
@@ -370,6 +372,41 @@ function renderEventBanner(){
     player.lastEventSeen = ev.id; Store.save(player);
     setTimeout(()=> toast(`Event aktif: ${ev.label}`,'gold',ICONS.star), 1200);
   }
+}
+
+function renderQuestTracker(){
+  const wrap = $('#quest-tracker');
+  if(!wrap) return;
+  const cats = currentCatsCache;
+  const lvl = levelFromXp(player.xp);
+  // quest onboarding: 4 langkah
+  const quests = [
+    { label:'Temukan kucing pertamamu', done: cats.length>=1 },
+    { label:'Beri makan kucing', done: player.fed>=1 },
+    { label:'Koleksi 3 kucing', done: cats.length>=3 },
+    { label:'Capai level 2', done: lvl>=2 },
+  ];
+  const doneCount = quests.filter(q=>q.done).length;
+  // tampilkan hanya jika belum semua selesai ATAU baru saja selesai (fade out)
+  if(doneCount >= quests.length){
+    // semua selesai — tampilkan sekali sebagai done, lalu hide setelah 1 kunjungan
+    if(player.questCompletedSeen){
+      wrap.classList.add('hide');
+      return;
+    }
+    player.questCompletedSeen = true; Store.save(player);
+  }
+  wrap.classList.remove('hide');
+  wrap.classList.toggle('done', doneCount>=quests.length);
+  $('#qt-count').textContent = `${doneCount}/${quests.length}`;
+  const list = $('#quest-list'); list.innerHTML='';
+  quests.forEach(q=>{
+    const item = el('div',{class:'quest-item'+(q.done?' done':'')});
+    item.innerHTML = `${q.done
+      ? '<span class="q-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg></span>'
+      : '<span class="q-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/></svg></span>'}<span>${q.label}</span>`;
+    list.appendChild(item);
+  });
 }
 
 function renderSession(){
@@ -1035,27 +1072,49 @@ function showLevelUp(lvl){
    --------------------------------------------------------------------- */
 let currentCatsCache = [];
 let currentFilter = 'all';
+let currentSearch = '';
 
 async function renderDex(){
   currentCatsCache = await allCats();
   const cork = $('#dex-cork');
   $('#dex-count').textContent = `${currentCatsCache.length} kucing`;
+  const q = currentSearch.toLowerCase().trim();
   const filtered = currentCatsCache.filter(c=>{
-    if(currentFilter==='all') return true;
-    if(['biasa','langka','epik','legendaris'].includes(currentFilter)) return c.rarity===currentFilter;
-    return c.color===currentFilter;
+    if(currentFilter==='all') {/* ok */}
+    else if(['biasa','langka','epik','legendaris'].includes(currentFilter)){ if(c.rarity!==currentFilter) return false; }
+    else { if(c.color!==currentFilter) return false; }
+    if(q && !(c.name||'').toLowerCase().includes(q)) return false;
+    return true;
   });
   cork.innerHTML='';
   if(currentCatsCache.length===0){
     cork.appendChild(emptyCorkboard());
     return;
   }
+  if(filtered.length===0){
+    const empty = el('div',{class:'dex-empty-search'});
+    empty.innerHTML = '<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#C9652F" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="margin:0 auto 8px;display:block;"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>Tidak ada kucing yang cocok dengan "'+escapeHtml(currentSearch)+'"';
+    cork.appendChild(empty);
+    return;
+  }
   filtered.forEach(c=> cork.appendChild(miniCard(c)));
-  // tambah slot kosong untuk nuance "belum terisi" (sampai kelipatan genap)
   if(filtered.length % 2 !== 0){
     cork.appendChild(emptySlot());
   }
 }
+
+// search bar handlers
+$('#dex-search-input').addEventListener('input', (e)=>{
+  currentSearch = e.target.value;
+  $('#dex-search').classList.toggle('has-text', !!currentSearch);
+  renderDex();
+});
+$('#dex-search-clear').addEventListener('click', ()=>{
+  currentSearch = '';
+  $('#dex-search-input').value = '';
+  $('#dex-search').classList.remove('has-text');
+  renderDex();
+});
 
 function emptyCorkboard(){
   const wrap = el('div',{class:'empty-state',style:'grid-column:1/-1;background:var(--paper);border:1px solid var(--line);border-radius:var(--radius-lg);margin:8px 0;'});
@@ -1971,8 +2030,41 @@ $('#set-install').addEventListener('click', async ()=>{
    --------------------------------------------------------------------- */
 if('serviceWorker' in navigator){
   window.addEventListener('load', ()=>{
-    navigator.serviceWorker.register('sw.js').catch(err=> console.warn('SW reg gagal', err));
+    navigator.serviceWorker.register('sw.js').then(reg=>{
+      // cek update berkala
+      reg.addEventListener('updatefound', ()=>{
+        const nw = reg.installing;
+        if(!nw) return;
+        nw.addEventListener('statechange', ()=>{
+          if(nw.state==='installed' && navigator.serviceWorker.controller){
+            // ada update, tampilkan toast
+            showUpdateToast();
+          }
+        });
+      });
+      // polling update tiap 60 menit
+      setInterval(()=> reg.update().catch(()=>{}), 60*60*1000);
+    }).catch(err=> console.warn('SW reg gagal', err));
+    // jika controller berubah (update aktif), reload sekali
+    let refreshing = false;
+    navigator.serviceWorker.addEventListener('controllerchange', ()=>{
+      if(refreshing) return;
+      refreshing = true;
+      window.location.reload();
+    });
   });
+}
+
+function showUpdateToast(){
+  // toast custom dengan tombol refresh
+  const wrap = $('#toast-wrap');
+  if(!wrap) return;
+  const t = el('div',{class:'toast update-toast'});
+  t.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 4v4h-4"/></svg> Versi baru Meongdex tersedia';
+  const btn = el('button',{class:'toast-btn', onclick:()=>{ window.location.reload(); }}, 'Refresh');
+  t.appendChild(btn);
+  wrap.appendChild(t);
+  setTimeout(()=>{ t.classList.add('out'); setTimeout(()=>t.remove(),300); }, 8000);
 }
 
 /* ---------------------------------------------------------------------

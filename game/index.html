@@ -85,6 +85,16 @@
         </div>
       </div>
 
+      <!-- quest tracker (pemain baru) -->
+      <div class="quest-tracker hide" id="quest-tracker">
+        <div class="quest-tracker-head">
+          <svg class="qt-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+          <h4>Misi pemburu baru</h4>
+          <span class="qt-count" id="qt-count">0/4</span>
+        </div>
+        <div class="quest-list" id="quest-list"></div>
+      </div>
+
       <!-- event musiman -->
       <div class="home-card event hide" id="home-event">
         <div class="event-icon" id="event-icon">
@@ -358,6 +368,13 @@
       <div class="cork-head">
         <h2>Meongdex-mu</h2>
         <span class="count" id="dex-count">0 kucing</span>
+      </div>
+      <div class="dex-search" id="dex-search">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+        <input type="text" id="dex-search-input" placeholder="Cari kucing by nama..." aria-label="Cari kucing" />
+        <button class="clear-btn" id="dex-search-clear" aria-label="Hapus pencarian">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+        </button>
       </div>
       <div class="cork-filter" id="dex-filter">
         <button class="active" data-filter="all">Semua</button>
