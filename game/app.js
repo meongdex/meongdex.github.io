@@ -17,7 +17,7 @@ const CONFIG = {
   MISSION_GOAL: 3,
   MISSION_BONUS: 100,
   CAT_DETECT_THRESHOLD: 0.5,   // confidence minimum COCO-SSD untuk "kucing"
-  PHOTO_MAX_EDGE: 1024,        // downscale foto sebelum disimpan
+  PHOTO_MAX_EDGE: 1000,        // downscale foto sebelum disimpan (privasi: redraw canvas otomatis strip EXIF)
   PHOTO_QUALITY: 0.82,         // kualitas JPEG
   COTD_KEY: 'meongdex_cotd',
   SESSION_WINDOW_MS: 30*60*1000, // 30 menit antar temuan = sesi sama
@@ -2041,6 +2041,7 @@ $('#set-about').addEventListener('click', ()=>{
       <div class="between"><span class="muted">Biaya</span><span class="mono">Gratis</span></div>
     </div>
     <p class="muted mt-12" style="font-size:11px;">Foto &amp; lokasi hanya tersimpan di perangkatmu, tidak dikirim ke server mana pun.</p>
+    <p class="muted mt-12" style="font-size:12px;font-style:italic;">Meongdex dibuat dengan sayang oleh Nugraha Nastya, dari Yogyakarta.</p>
     <button class="btn block mt-16" onclick="document.getElementById('overlay').classList.remove('active')">Tutup</button>`;
   openSheet(content);
 });
@@ -2052,8 +2053,174 @@ $('#set-export').addEventListener('click', async ()=>{
   const a = el('a',{href:url, download:`meongdex-backup-${todayKey()}.json`});
   document.body.appendChild(a); a.click(); a.remove();
   setTimeout(()=>URL.revokeObjectURL(url), 1000);
+  // catat tanggal cadangan terakhir sebagai pengingat halus
+  try{
+    localStorage.setItem('meongdex_lastBackup', data.exportedAt);
+    updateExportStatus();
+  }catch(e){ /* localStorage mungkin penuh — bukan kritikal */ }
   toast('Cadangan diunduh','',ICONS.check);
 });
+
+// --- Impor cadangan JSON ---
+// Impor memvalidasi struktur file sebelum menulis, lalu meminta konfirmasi
+// pemain. Jika pemain menolak, tidak ada perubahan dilakukan.
+const IMPORT_MAX_BYTES = 50 * 1024 * 1024; // 50MB batas aman
+const importFileInput = el('input', { type:'file', accept:'application/json,.json', style:'display:none' });
+document.body.appendChild(importFileInput);
+
+function updateExportStatus(){
+  const node = $('#export-status');
+  if(!node) return;
+  try{
+    const last = localStorage.getItem('meongdex_lastBackup');
+    if(!last){ node.textContent = 'Cadangkan data koleksimu'; return; }
+    const d = new Date(last);
+    const txt = d.toLocaleDateString('id-ID', { day:'numeric', month:'long', year:'numeric' });
+    node.textContent = `Cadangan terakhir: ${txt}`;
+  }catch(e){ /* abaikan */ }
+}
+
+/**
+ * Validasi struktur data cadangan Meongdex sebelum diimpor.
+ * Mengembalikan { ok:boolean, error?:string, data?:{player,cats,exportedAt} }.
+ */
+function validateBackup(obj){
+  if(!obj || typeof obj !== 'object') return { ok:false, error:'Format file bukan objek JSON yang valid.' };
+  if(!Array.isArray(obj.cats)) return { ok:false, error:'Field "cats" tidak ditemukan atau bukan array.' };
+  if(!obj.player || typeof obj.player !== 'object') return { ok:false, error:'Field "player" tidak ditemukan atau bukan objek.' };
+  // validasi minimal tiap entri kucing
+  const requiredCatFields = ['id','date','color'];
+  for(let i=0; i<obj.cats.length; i++){
+    const c = obj.cats[i];
+    if(!c || typeof c !== 'object'){
+      return { ok:false, error:`Entri kucing ke-${i+1} bukan objek.` };
+    }
+    for(const f of requiredCatFields){
+      if(c[f] === undefined || c[f] === null || c[f] === ''){
+        return { ok:false, error:`Entri kucing ke-${i+1} kehilangan field "${f}".` };
+      }
+    }
+    // sanitasi id: harus format MDX-XXX
+    if(!/^MDX-\d{3,}$/.test(String(c.id))){
+      return { ok:false, error:`ID kucing ke-${i+1} ("${c.id}") tidak sesuai format MDX-XXX.` };
+    }
+  }
+  return { ok:true, data:obj };
+}
+
+importFileInput.addEventListener('change', async (ev)=>{
+  const file = ev.target.files?.[0];
+  ev.target.value = ''; // reset agar bisa pick file yang sama lagi
+  if(!file) return;
+
+  // ECC security review: file upload validation
+  if(file.size > IMPORT_MAX_BYTES){
+    toast(`File terlalu besar (maks ${Math.round(IMPORT_MAX_BYTES/1024/1024)}MB)`, 'warn', ICONS.warn);
+    return;
+  }
+  const nameOk = /\.json$/i.test(file.name) || file.type === 'application/json';
+  if(!nameOk){
+    toast('Pilih file .json yang benar', 'warn', ICONS.warn);
+    return;
+  }
+
+  let text;
+  try{
+    text = await file.text();
+  }catch(e){
+    toast('Tidak bisa membaca file', 'warn', ICONS.warn);
+    return;
+  }
+  let parsed;
+  try{
+    parsed = JSON.parse(text);
+  }catch(e){
+    toast('File bukan JSON valid', 'warn', ICONS.warn);
+    return;
+  }
+  const result = validateBackup(parsed);
+  if(!result.ok){
+    toast(`Format cadangan tidak dikenali: ${result.error}`, 'warn', ICONS.warn);
+    return;
+  }
+  const backup = result.data;
+  const totalCats = backup.cats.length;
+  const backupDate = backup.exportedAt
+    ? new Date(backup.exportedAt).toLocaleDateString('id-ID', { day:'numeric', month:'long', year:'numeric' })
+    : '(tanggal tidak diketahui)';
+
+  // Tampilkan konfirmasi sebelum menulis
+  const content = el('div');
+  content.innerHTML = `
+    <h3>Impor Meongdex?</h3>
+    <p>File cadangan berisi <strong>${totalCats} kucing</strong>, diekspor pada <strong>${backupDate}</strong>.</p>
+    <p class="muted" style="font-size:13px;">Pilih mode impor:</p>
+    <div class="row gap-8 mt-8" style="flex-direction:column;align-items:stretch;">
+      <label class="set-item" style="cursor:pointer;padding:12px;border:1px solid var(--border,#e5d8c5);border-radius:12px;">
+        <input type="radio" name="imp-mode" value="merge" checked style="margin-right:8px;">
+        <div class="tx" style="flex:1;">
+          <div class="t">Gabung</div>
+          <div class="d">Tambahkan kucing baru, lewati ID yang sudah ada. Aman jika sudah ada koleksi.</div>
+        </div>
+      </label>
+      <label class="set-item" style="cursor:pointer;padding:12px;border:1px solid var(--border,#e5d8c5);border-radius:12px;">
+        <input type="radio" name="imp-mode" value="replace" style="margin-right:8px;">
+        <div class="tx" style="flex:1;">
+          <div class="t">Ganti total</div>
+          <div class="d">Hapus semua koleksi & progres sekarang, lalu tulis ulang dari cadangan.</div>
+        </div>
+      </label>
+    </div>
+    <div class="row gap-8 mt-16">
+      <button class="btn secondary block" id="imp-cancel">Batal</button>
+      <button class="btn block" id="imp-ok">Impor</button>
+    </div>`;
+  openSheet(content);
+
+  $('#imp-cancel').addEventListener('click', closeSheet);
+  $('#imp-ok').addEventListener('click', async ()=>{
+    const mode = (content.querySelector('input[name="imp-mode"]:checked') || {}).value || 'merge';
+    try{
+      const db = await getDB();
+      if(mode === 'replace'){
+        await db.clear('cats');
+        // overwrite progres pemain dengan default lalu merge dengan cadangan
+        const merged = Object.assign({}, Store.defaults(), backup.player);
+        player = merged;
+        Store.save(player);
+      }else{
+        // merge: hanya tulis kucing yang ID-nya belum ada; naikkan xp/level? tidak — player tidak diubah
+        // supaya progres lokal pemain tidak ditimpa diam-diam.
+      }
+      let added = 0, skipped = 0;
+      for(const c of backup.cats){
+        if(mode === 'merge'){
+          const existing = await db.get('cats', c.id);
+          if(existing){ skipped++; continue; }
+        }
+        await db.put('cats', c);
+        added++;
+      }
+      // refresh cache & UI
+      currentCatsCache = await allCats();
+      closeSheet();
+      const msg = mode === 'replace'
+        ? `Impor selesai: ${added} kucing dipulihkan`
+        : `Impor selesai: ${added} baru, ${skipped} sudah ada`;
+      toast(msg, '', ICONS.check);
+      renderHome(); renderDex();
+    }catch(e){
+      console.error('import error', e);
+      closeSheet();
+      toast('Gagal mengimpor, coba lagi', 'warn', ICONS.warn);
+    }
+  });
+});
+
+$('#set-import').addEventListener('click', ()=> importFileInput.click());
+
+// tampilkan status cadangan terakhir saat masuk settings
+updateExportStatus();
 $('#set-clear').addEventListener('click', ()=>{
   const content = el('div');
   content.innerHTML = `

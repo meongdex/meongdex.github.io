@@ -9,13 +9,30 @@ Temukan. Kasih Makan. Koleksi.
 
 ---
 
+## Dikembangkan oleh
+
+**Nugraha Nastya Adi Wibawa** — Yogyakarta, Indonesia, 2026.
+
+Dibuat dengan Vanilla JS, IndexedDB, dan rasa sayang kepada kucing-kucing jalanan yang berbagi kota dengan kita.
+
+---
+
+## Progress Log
+
+Jejak singkat posisi proyek, diperbarui di setiap akhir batch kerja. Dipakai untuk melacak di mana proyek berhenti kalau sesi berikutnya perlu melanjutkan.
+
+- **2026-07-04** — Audit mandiri Fase 3 (sesuai addendum prompt). Status: Fase 1 & 2 selesai, Fase 3 sudah mencapai batch 10 (dark mode + storage info + more achievements). Audit ulang checklist Fase 1 & 2: tidak ditemukan regresi. Ekspor data sudah ada; EXIF strip sudah aman via canvas toDataURL; sebagian besar item Fase 3 (jenis makanan, mood, jurnal, sesi berburu, kucing hari ini, peta hotspot, cuaca, rumah, event musiman, ekspor kartu, pengingat in-app, fakta kucing, konfeti, suara) sudah diimplement. Yang belum ada dan akan dikerjakan bertahap: impor data cadangan, kredit developer, bond/trust level, tantangan foto honor-system, leaderboard Supabase, kartu komunitas Yogyakarta, Open Graph meta, ringkasan mingguan di Beranda.
+- **2026-07-04 (batch 11)** — Bagian 1 addendum selesai. (1.1) Impor cadangan JSON: tombol "Impor Meongdex" di Pengaturan, validasi struktur (id MDX-XXX, field wajib, ukuran maks 50MB, ekstensi .json), dua mode (Gabung / Ganti total), konfirmasi sheet sebelum eksekusi. Tanggal cadangan terakhir ditampilkan otomatis di deskripsi tombol Ekspor sebagai pengingat halus. (1.2) PHOTO_MAX_EDGE diturunkan dari 1024 ke 1000 sesuai spec addendum; EXIF strip memang sudah otomatis karena foto digambar ulang via canvas lalu diekspor sebagai JPEG — didokumentasikan transparan di bagian Privasi. (1.3) Kredit developer: bagian "Dikembangkan oleh" di README, footer landing page (`.dev-credit` dengan Plus Jakarta Sans 11px charcoal opacity 0.55), `<meta name="author">` di root + game index.html, baris italic di sheet "Tentang Meongdex" game. Verifikasi: node --check PASS, local server HTTP 200 untuk semua aset, tidak ada secret hardcoded.
+
+---
+
 ## Status Fase
 
 | Fase | Status | Catatan |
 |------|--------|---------|
 | Fase 1 — MVP Inti | Selesai | Onboarding, beranda, alur temukan->makan->foto->verifikasi AI->kartu->Meongdex, persistensi IndexedDB, offline shell. |
 | Fase 2 — PWA + Landing + APK | Selesai | Landing page lengkap (hero+fitur+screenshot+cara install+FAQ), PWA installable (manifest+SW+beforeinstallprompt), halaman instruksi APK. File APK siap-pakai menunggu satu kali generate via PWABuilder (lihat asumsi #12). |
-| Fase 3 — Fitur lanjutan | Berjalan | Mulai: Jurnal Berburu (linimasa harian), ekspor kartu sebagai gambar (canvas 1080x1080 & 1080x1920 + watermark), badge Kembaran Ditemukan, a11y fix SVG, styling improvements (hover, radar pulse, nav indicator, font sizes). Fitur Fase 3 lainnya menyusul. |
+| Fase 3 — Fitur lanjutan | Berjalan | Batch 1-10 selesai. Sudah ada: Jurnal Berburu, ekspor kartu (canvas 1080x1080 & 1080x1920 + watermark), badge Kembaran Ditemukan, a11y fix SVG, styling improvements, jenis makanan & mood, kelangkaan berbasis atribut, sesi berburu, kucing hari ini, peta hotspot Leaflet, cuaca Open-Meteo, rumah/shelter, event musiman, pengingat in-app, fakta kucing, kontrol suara, konfeti, dark mode, storage info, achievements lanjutan. Sedang ditambahkan dari addendum: ekspor+impor data cadangan, kredit developer, bond/trust level, tantangan foto honor-system, kartu komunitas Yogyakarta, Open Graph meta, ringkasan mingguan. |
 
 ---
 
@@ -131,10 +148,11 @@ Berikut asumsi yang diambil karena tidak dijelaskan secara eksplisit, demi kelan
 ## Privasi
 
 - Foto & lokasi **hanya disimpan lokal di perangkat** pemain (IndexedDB + localStorage).
-- Tidak ada data yang diunggah ke server mana pun di Fase 1.
+- Foto dikompres dan dibersihkan dari metadata lokasi sebelum disimpan, murni untuk performa dan privasi pemain. Proses ini terjadi otomatis lewat redraw di elemen `<canvas>` lalu ekspor ulang sebagai JPEG — ini membuang metadata EXIF (termasuk data GPS presisi tinggi yang mungkin terekam kamera HP di dalam file foto asli). Koordinat yang disimpan di data game adalah koordinat yang sengaja diminta pemain lewat Geolocation API, yang sudah cukup dan terkontrol, terpisah dari metadata file foto.
+- Tidak ada data yang diunggah ke server mana pun di Fase 1. (Fase 3: leaderboard Supabase bersifat opsional dan hanya mengirim total XP/jumlah kucing + nama panggilan anonim, tidak pernah foto atau lokasi.)
 - Verifikasi AI dijalankan **di browser pemain**, bukan di cloud.
 - Pemain bisa menghapus semua data kapan saja via Pengaturan > Hapus semua data.
-- Pemain bisa mengekspor Meongdex sebagai JSON (cadangan) via Pengaturan.
+- Pemain bisa mengekspor Meongdex sebagai JSON (cadangan) via Pengaturan, dan mengimpor kembali lewat menu yang sama untuk pindah perangkat atau pemulihan setelah cache dibersihkan.
 
 ---
 
