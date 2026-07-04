@@ -272,23 +272,6 @@ main{flex:1;display:flex;flex-direction:column;position:relative;overflow:hidden
 .home-top{display:flex;justify-content:space-between;align-items:center;margin:4px 0 14px;}
 .home-top h3{font-size:18px;}
 .home-top .date{font-size:12px;color:var(--text-soft);font-family:'JetBrains Mono',monospace;}
-.home-top-right{display:flex;align-items:center;gap:8px;}
-
-/* Auth & sync: sync indicator di Beranda */
-.sync-indicator{
-  width:28px;height:28px;display:none;place-items:center;
-  border-radius:999px;transition:opacity .2s ease;
-}
-.sync-indicator.active{display:grid;}
-.sync-indicator svg{width:16px;height:16px;}
-.sync-indicator.syncing{color:var(--terracotta-deep,#C9652F);}
-.sync-indicator.syncing .spin{animation:spin 0.9s linear infinite;}
-.sync-indicator.synced{color:var(--teal-deep,#357569);}
-.sync-indicator.error{color:#a8462e;background:rgba(168,70,46,.1);}
-@keyframes spin{from{transform:rotate(0deg);}to{transform:rotate(360deg);}}
-@media (prefers-reduced-motion:reduce){
-  .sync-indicator.syncing .spin{animation:none;}
-}
 .xp-pill{
   display:flex;align-items:center;gap:6px;background:var(--paper);
   border:1px solid var(--line);padding:6px 12px;border-radius:999px;
@@ -1265,60 +1248,6 @@ main{flex:1;display:flex;flex-direction:column;position:relative;overflow:hidden
   background:transparent !important;color:var(--text-soft,#5C4B44) !important;
 }
 .practice-btn:hover{opacity:1;border-color:var(--terracotta,#E8804C) !important;}
-
-/* Auth & sync: layar pilih storage (storage-choice) */
-.storage-choice{
-  padding:24px 20px;display:flex;align-items:center;justify-content:center;
-  background:linear-gradient(180deg,var(--cream),var(--cream-deep));
-  overflow-y:auto;
-}
-.storage-choice-wrap{max-width:440px;width:100%;text-align:center;}
-.storage-choice-mascot{width:120px;height:120px;margin:0 auto 16px;}
-.storage-choice-mascot svg{width:100%;height:100%;}
-.storage-choice h2{font-size:24px;margin-bottom:10px;font-family:'Fredoka',sans-serif;color:var(--charcoal);}
-.storage-choice-intro{font-size:13px;color:var(--text-soft);line-height:1.55;margin-bottom:22px;}
-.storage-options{display:flex;flex-direction:column;gap:10px;text-align:left;}
-.storage-opt{
-  display:flex;align-items:flex-start;gap:12px;padding:14px;
-  background:var(--paper);border:1.5px solid var(--line);border-radius:14px;
-  cursor:pointer;transition:transform .12s ease,border-color .12s ease;
-  font-family:inherit;
-}
-.storage-opt:hover{transform:translateY(-1px);border-color:var(--terracotta,#E8804C);}
-.storage-opt:active{transform:scale(.99);}
-.storage-opt .so-ico{
-  width:44px;height:44px;flex-shrink:0;border-radius:12px;
-  display:grid;place-items:center;
-}
-.storage-opt .so-ico svg{width:22px;height:22px;}
-.so-ico-none{background:rgba(74,155,142,.15);color:var(--teal-deep,#357569);}
-.so-ico-google{background:rgba(232,128,76,.15);color:var(--terracotta-deep,#C9652F);}
-.so-ico-facebook{background:rgba(66,103,178,.15);color:#4267b2;}
-.storage-opt .so-tx{flex:1;min-width:0;}
-.storage-opt .so-title{font-weight:600;font-size:15px;color:var(--charcoal);font-family:'Fredoka',sans-serif;margin-bottom:3px;}
-.storage-opt .so-desc{font-size:12px;color:var(--text-soft);line-height:1.45;margin-bottom:5px;}
-.storage-opt .so-tag{
-  display:inline-block;font-size:9px;font-family:'JetBrains Mono',monospace;
-  background:rgba(212,175,55,.18);color:#8a6b1a;padding:2px 7px;border-radius:999px;
-  font-weight:700;letter-spacing:.05em;
-}
-.storage-choice-note{
-  margin-top:16px;font-size:12px;color:#a8462e;line-height:1.5;
-  padding:10px 14px;background:rgba(168,70,46,.06);border-radius:10px;
-  min-height:20px;
-}
-
-/* Auth & sync: account info box di sheet */
-.account-info-box{
-  background:var(--paper,#FFFDF8);border:1px solid var(--line,#E4D5BE);
-  border-radius:12px;padding:12px 14px;margin-bottom:8px;
-}
-.account-info-box .ai-row{
-  display:flex;justify-content:space-between;align-items:center;
-  padding:4px 0;font-size:13px;
-}
-.account-info-box .ai-row .muted{color:var(--text-mute,#8a7566);font-size:12px;}
-.account-info-box .ai-row b{color:var(--charcoal,#3A2E2A);font-family:'Fredoka',sans-serif;}
 
 /* ---------- 42. SW update toast ---------- */
 .toast.update-toast{

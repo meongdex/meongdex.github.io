@@ -118,7 +118,7 @@
   <p>Meongdex dibuat karena sayang sama kucing-kucing di sekitar kita. Privasi kamu adalah prioritas utama proyek ini. Kebijakan ini menjelaskan data apa yang dikumpulkan, bagaimana dipakai, dan kontrol yang kamu punya.</p>
 
   <h2>1. Data yang Tersimpan Lokal di Perangkatmu</h2>
-  <p>Secara default (main tanpa akun), <strong>semua data tersimpan lokal di perangkatmu</strong> (IndexedDB + localStorage browser). Tidak ada yang dikirim ke server mana pun.</p>
+  <p><strong>Semua data tersimpan lokal di perangkatmu</strong> (IndexedDB + localStorage browser). Tidak ada yang dikirim ke server mana pun.</p>
   <ul>
     <li><strong>Foto kucing</strong> — dikompres dan dibersihkan dari metadata EXIF (termasuk data GPS) sebelum disimpan, murni untuk performa dan privasi.</li>
     <li><strong>Metadata kucing</strong> — nama, warna, kelangkaan, temperamen, tanggal, koordinat lokasi (opsional, bisa dilewati).</li>
@@ -126,25 +126,11 @@
     <li><strong>Lokasi</strong> — hanya disimpan kalau kamu izinkan Geolocation API. Bisa dilewati dengan "Lanjut tanpa lokasi".</li>
   </ul>
 
-  <h2>2. Data yang Dikirim ke Server (Hanya Jika Kamu Login)</h2>
-  <p>Login bersifat <strong>opsional</strong>. Kalau kamu pilih "Main tanpa akun", tidak ada data yang dikirim ke server. Kalau kamu login, data berikut dikirim sesuai provider:</p>
+  <h2>2. Pindah Device (Import/Export Manual)</h2>
+  <p>Meongdex tidak menggunakan sistem akun atau server sync. Untuk pindah device, gunakan fitur <strong>Ekspor Meongdex</strong> (unduh file JSON berisi foto + metadata) di Pengaturan, lalu <strong>Impor Meongdex</strong> di device baru. File cadangan ini berisi semua data koleksi kamu — simpan di tempat aman.</p>
 
-  <h3>Google Login (sync via Google Drive)</h3>
-  <ul>
-    <li><strong>Scope:</strong> <code>drive.file</code> — akses hanya ke file yang dibuat app ini di Drive kamu, bukan semua Drive.</li>
-    <li><strong>Backup JSON</strong> (foto base64 + metadata) disimpan di <code>appDataFolder</code> Drive kamu — folder tersembunyi khusus app, tidak visible di Drive UI.</li>
-    <li><strong>Data tetap milikmu</strong> di Google Drive kamu. Developer Meongdex tidak punya akses ke Drive kamu.</li>
-    <li>Kamu bisa hapus backup kapan saja lewat <a href="https://myaccount.google.com/permissions" target="_blank" rel="noopener">Google Account Permissions</a> → revoke Meongdex.</li>
-  </ul>
-
-  <h3>Facebook Login (sync metadata via Supabase)</h3>
-  <ul>
-    <li><strong>Scope:</strong> <code>email</code>, <code>public_profile</code> — nama + email saja.</li>
-    <li><strong>Metadata only</strong> (XP, level, koleksi id, temperamen, achievement) disimpan di tabel Supabase dengan Facebook user ID sebagai key.</li>
-    <li><strong>Foto tetap lokal</strong> per device — Facebook tidak punya cloud storage user-facing.</li>
-    <li><strong>Token</strong> tidak disimpan di server — hanya di perangkatmu.</li>
-    <li>Kamu bisa revoke akses lewat <a href="https://www.facebook.com/settings?tab=applications" target="_blank" rel="noopener">Facebook App Settings</a>.</li>
-  </ul>
+  <h3>Leaderboard (opsional, butuh konfigurasi developer)</h3>
+  <p>Fitur leaderboard (papan peringkat) opsional dan butuh konfigurasi Supabase oleh developer. Kalau aktif, hanya <strong>nama panggilan + total XP + jumlah kucing</strong> yang dikirim — <strong>TIDAK PERNAH foto atau lokasi</strong>. Kalau belum dikonfigurasi, fitur ini menampilkan pesan ramah dan tidak mengganggu gameplay.</p>
 
   <h2>3. Verifikasi AI (COCO-SSD)</h2>
   <p>Verifikasi foto kucing dijalankan <strong>di browser kamu</strong> menggunakan TensorFlow.js + COCO-SSD. <strong>Foto tidak diunggah ke server</strong> untuk verifikasi — model AI dimuat sekali via CDN lalu berjalan lokal.</p>
@@ -155,13 +141,13 @@
     <li><strong>OpenStreetMap (Leaflet tiles)</strong> — peta hotspot. Hanya mengirim koordinat untuk render tile.</li>
     <li><strong>Google Fonts</strong> — tipografi (Fredoka, Plus Jakarta Sans, JetBrains Mono).</li>
     <li><strong>CDN: jsDelivr</strong> — library TensorFlow.js, COCO-SSD, idb, Leaflet.</li>
-    <li><strong>Supabase</strong> (opsional) — leaderboard + Facebook metadata sync.</li>
+    <li><strong>Supabase</strong> (opsional) — leaderboard saja (nama panggilan + XP + jumlah kucing).</li>
   </ul>
 
   <h2>5. Cookie dan Storage</h2>
   <p>Meongdex tidak menggunakan cookie tracking. Penyimpanan lokal yang dipakai:</p>
   <ul>
-    <li><code>localStorage</code> — preferensi pemain, progres, token auth.</li>
+    <li><code>localStorage</code> — preferensi pemain, progres.</li>
     <li><code>IndexedDB</code> — foto + metadata kucing (database lokal).</li>
     <li><code>Cache Storage</code> — service worker cache untuk offline mode.</li>
   </ul>
@@ -171,8 +157,7 @@
   <ul>
     <li><strong>Akses</strong> — lihat semua data via Pengaturan &gt; Ekspor Meongdex.</li>
     <li><strong>Portabilitas</strong> — export ke JSON, import di device lain.</li>
-    <li><strong>Penghapusan</strong> — Pengaturan &gt; Hapus semua data, atau revoke provider login.</li>
-    <li><strong>Opt-out</strong> — main tanpa akun = tidak ada data ke server.</li>
+    <li><strong>Penghapusan</strong> — Pengaturan &gt; Hapus semua data, atau clear browser cache.</li>
     <li><strong>Offline</strong> — game tetap bisa dimainkan tanpa internet setelah kunjungan pertama.</li>
   </ul>
 
@@ -180,7 +165,7 @@
   <p>Meongdex tidak ditujukan untuk anak di bawah 13 tahun. Tidak ada data yang sengaja dikumpulkan dari anak-anak. Kalau kamu orang tua/wali dan tahu anak kamu mengirim data tanpa izin, hubungi developer untuk penghapusan.</p>
 
   <h2>8. Keamanan</h2>
-  <p>Data lokal di perangkatmu aman selama perangkat tidak diakses orang lain. Data sync (Google Drive / Supabase) dienkripsi in-transit (HTTPS). Token OAuth disimpan di localStorage perangkat — tidak dikirim ke server Meongdex.</p>
+  <p>Data lokal di perangkatmu aman selama perangkat tidak diakses orang lain. Kalau leaderboard aktif, data dikirim ke Supabase via HTTPS (enkripsi in-transit).</p>
 
   <h2>9. Perubahan Kebijakan</h2>
   <p>Kebijakan ini bisa berubah kalau ada fitur baru. Perubahan akan diumumkan di Progress Log README. Tanggal "Terakhir diperbarui" di atas akan diupdate.</p>
