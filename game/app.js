@@ -55,6 +55,20 @@ const DECOR_ITEMS = [
   { id:'lamp',    label:'Lampu',      unlockLevel:6, svg:'<path d="M9 4h6l2 6H7z" fill="#D4AF37"/><path d="M12 10v8M9 18h6" stroke="#3A2E2A" stroke-width="1.5"/>' },
 ];
 
+// Tips harian kucing (Fase 3): random tip per hari
+const CAT_TIPS = [
+  'Kucing tidur rata-rata 12-16 jam sehari. Jangan ganggu yang sedang tidur!',
+  'Dengkuran kucing frekuensinya 25-150 Hz, bisa bantu penyembuhan tulang.',
+  'Kucing punya 32 otot di tiap telinga, bisa berputar 180 derajat.',
+  'Setiap kucing punya pola hidung unik, seperti sidik jari manusia.',
+  'Kucing bisa mendengar frekuensi tinggi yang tak bisa didengar anjing.',
+  'Saat kucing pelan-pelan berkedip ke arahmu, itu tanda kepercayaan.',
+  'Kucing oren lebih sering jantan daripada betina (sekitar 80%).',
+  'Kucing calico hampir selalu betin karena genetika warna.',
+  'Whiskers kucing selebar tubuhnya, bantu navigasi ruang sempit.',
+  'Grup kucing disebut "clowder" — koleksimu adalah clowder!',
+];
+
 // Event musiman (Fase 3): cek tanggal untuk event aktif
 function getCurrentEvent(){
   const now = new Date();
@@ -239,11 +253,23 @@ function el(tag, props={}, children=[]){
 const screenOrder = ['onboarding','home','perm-loc','feed','perm-cam','verify','card','dex','journal','map','shelter','stats','settings'];
 let currentScreen = 'onboarding';
 
-function go(screen){
+// urutan screen untuk menentukan arah transisi (back vs forward)
+const navOrder = ['home','dex','find','journal','map','shelter','stats','settings'];
+function go(screen, opts={}){
   if(!screenOrder.includes(screen)) return;
-  $$('.screen').forEach(s=> s.classList.toggle('active', s.dataset.screen===screen));
+  // tentukan arah transisi
+  const curIdx = navOrder.indexOf(currentScreen);
+  const newIdx = navOrder.indexOf(screen);
+  const isBack = opts.back || (newIdx < curIdx && curIdx >= 0);
+  $$('.screen').forEach(s=>{
+    const match = s.dataset.screen===screen;
+    s.classList.toggle('active', match);
+    s.classList.toggle('back', match && isBack);
+  });
   currentScreen = screen;
   $('#main').scrollTop = 0;
+  // haptic feedback saat navigasi
+  if(navigator.vibrate) navigator.vibrate(8);
   // bottom nav aktif
   const navMap = { home:'home', dex:'dex', settings:'settings', journal:'journal', map:'map', shelter:'shelter' };
   $$('.bottom-nav button').forEach(b=>{
@@ -350,6 +376,8 @@ function renderHome(){
   renderSession();
   // quest tracker (pemain baru)
   renderQuestTracker();
+  // tip harian
+  renderTipCard();
   // event musiman
   renderEventBanner();
   // tantangan
@@ -374,6 +402,17 @@ function renderEventBanner(){
     player.lastEventSeen = ev.id; Store.save(player);
     setTimeout(()=> toast(`Event aktif: ${ev.label}`,'gold',ICONS.star), 1200);
   }
+}
+
+function renderTipCard(){
+  const wrap = $('#home-tip');
+  if(!wrap) return;
+  // tip deterministik per hari (seed dari tanggal)
+  const d = new Date();
+  const seed = d.getFullYear()*10000 + (d.getMonth()+1)*100 + d.getDate();
+  const tip = CAT_TIPS[seed % CAT_TIPS.length];
+  $('#tip-text').textContent = tip;
+  wrap.classList.remove('hide');
 }
 
 function renderQuestTracker(){
@@ -686,6 +725,7 @@ function doThrow(power){
     catEl.classList.add('eating');
     $('#feed-mood').textContent = MOODS[3];
     playPurr(1600); // efek suara dengkuran
+    if(navigator.vibrate) navigator.vibrate([10,30,10]); // haptic makan
   }, 850);
   setTimeout(()=>{
     catEl.classList.remove('eating');
@@ -1053,6 +1093,7 @@ async function saveCat(){
     btn.disabled = false;
     toast(`Nomor ${savedCat.id} terdaftar di Meongdex-mu!`, savedCat.rarity==='langka'?'gold':'success', ICONS.star);
     playChime();
+    if(navigator.vibrate) navigator.vibrate(savedCat.rarity==='legendaris'?[20,40,20,40,20]:[15]);
     // confetti untuk legendaris & epik
     if(savedCat.rarity==='legendaris' || savedCat.rarity==='epik'){
       launchConfetti(savedCat.rarity==='legendaris' ? 60 : 30);
