@@ -234,7 +234,7 @@ function el(tag, props={}, children=[]){
 /* ---------------------------------------------------------------------
    4. Navigasi screen
    --------------------------------------------------------------------- */
-const screenOrder = ['onboarding','home','perm-loc','feed','perm-cam','verify','card','dex','journal','map','shelter','settings'];
+const screenOrder = ['onboarding','home','perm-loc','feed','perm-cam','verify','card','dex','journal','map','shelter','stats','settings'];
 let currentScreen = 'onboarding';
 
 function go(screen){
@@ -254,6 +254,7 @@ function go(screen){
   if(screen==='journal') renderJournal();
   if(screen==='map') renderMap();
   if(screen==='shelter') renderShelter();
+  if(screen==='stats') renderStats();
   if(screen==='settings') {/* statis */}
 }
 
@@ -1545,6 +1546,83 @@ function renderSkinPicker(container, currentSkin, onSelect){
     wrap.appendChild(opt);
   });
   container.appendChild(wrap);
+}
+
+/* ---------------------------------------------------------------------
+   13b6. Statistik pemburu (dashboard komprehensif)
+   --------------------------------------------------------------------- */
+$('#stat-row').addEventListener('click', ()=> go('stats'));
+
+async function renderStats(){
+  const cats = await allCats();
+  const lvl = levelFromXp(player.xp);
+  const xpInLvl = player.xp % CONFIG.XP_PER_LEVEL;
+  const xpToNext = CONFIG.XP_PER_LEVEL - xpInLvl;
+
+  // grid stats utama
+  const grid = $('#stats-grid');
+  grid.innerHTML='';
+  const stats = [
+    { label:'Level', value:lvl, icon:'<path d="M12 2l2.6 6.1L21 9l-5 4.4L17.4 20 12 16.6 6.6 20 8 13.4 3 9l6.4-.9L12 2z"/>', color:'var(--gold)' },
+    { label:'Total XP', value:player.xp, icon:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>', color:'var(--terracotta-deep)' },
+    { label:'Kucing', value:cats.length, icon:'<path d="M12 21s-7-4.9-9.5-9C.7 8.8 2 5 5.5 5c2 0 3.3 1.3 4 2.3.7-1 2-2.3 4-2.3 3.5 0 4.8 3.8 3 7-2.5 4.1-9.5 9-9.5 9z"/>', color:'var(--teal-deep)' },
+    { label:'Streak', value:player.streak||0, icon:'<path d="M13 2L4 14h7l-1 8 9-12h-7z"/>', color:'var(--terracotta)' },
+    { label:'Diberi makan', value:player.fed, icon:'<circle cx="12" cy="12" r="8.5"/><path d="M12 3.5c-1.6 2-1.6 15 0 17M4.5 9h15M4.5 15h15"/>', color:'var(--teal)' },
+    { label:'Tantangan', value:`${(player.completedChallenges||[]).length}/${CHALLENGES.length}`, icon:'<path d="M20 6L9 17l-5-5"/>', color:'#9b6dd4' },
+  ];
+  stats.forEach(s=>{
+    const card = el('div',{class:'stat-card'});
+    card.innerHTML = `<div class="sc-ico" style="color:${s.color}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${s.icon}</svg></div><div class="sc-val">${s.value}</div><div class="sc-lbl">${s.label}</div>`;
+    grid.appendChild(card);
+  });
+
+  // XP progress bar
+  const xpBar = el('div',{class:'stats-xp-bar'});
+  xpBar.innerHTML = `<div class="xp-bar-head"><span>Lv ${lvl}</span><span class="muted">${xpInLvl} / ${CONFIG.XP_PER_LEVEL} XP · ${xpToNext} lagi</span></div><div class="xp-bar-track"><i style="width:${(xpInLvl/CONFIG.XP_PER_LEVEL)*100}%"></i></div>`;
+  grid.appendChild(xpBar);
+
+  // color bars
+  const cb = $('#color-bars'); cb.innerHTML='';
+  const maxColor = Math.max(1, ...COLORS.map(c=>cats.filter(x=>x.color===c.id).length));
+  COLORS.forEach(c=>{
+    const count = cats.filter(x=>x.color===c.id).length;
+    const pct = (count/maxColor)*100;
+    const row = el('div',{class:'cb-row'});
+    row.innerHTML = `<span class="cb-dot" style="background:${c.hex}"></span><span class="cb-lbl">${c.label}</span><div class="cb-track"><i style="width:${pct}%;background:${c.hex}"></i></div><span class="cb-num">${count}</span>`;
+    cb.appendChild(row);
+  });
+
+  // rarity bars
+  const rb = $('#rarity-bars'); rb.innerHTML='';
+  const rarKeys = ['biasa','langka','epik','legendaris'];
+  const maxRar = Math.max(1, ...rarKeys.map(r=>cats.filter(x=>x.rarity===r).length));
+  rarKeys.forEach(r=>{
+    const count = cats.filter(x=>x.rarity===r).length;
+    const pct = (count/maxRar)*100;
+    const rar = RARITIES[r];
+    const row = el('div',{class:'cb-row'});
+    row.innerHTML = `<span class="cb-dot" style="background:${rar.color}"></span><span class="cb-lbl">${rar.label.charAt(0)+rar.label.slice(1).toLowerCase()}</span><div class="cb-track"><i style="width:${pct}%;background:${rar.color}"></i></div><span class="cb-num">${count}</span>`;
+    rb.appendChild(row);
+  });
+
+  // achievements
+  const ach = $('#stats-achievements'); ach.innerHTML='';
+  const done = player.completedChallenges || [];
+  const achievements = [
+    { label:'Pemburu pertama', desc:'Temukan kucing pertama', done:cats.length>=1, icon:'<path d="M12 21s-7-4.9-9.5-9C.7 8.8 2 5 5.5 5c2 0 3.3 1.3 4 2.3.7-1 2-2.3 4-2.3 3.5 0 4.8 3.8 3 7-2.5 4.1-9.5 9-9.5 9z"/>' },
+    { label:'Kolektor', desc:'Koleksi 5 kucing', done:cats.length>=5, icon:'<rect x="3" y="4" width="18" height="16" rx="3"/><path d="M3 9h18"/>' },
+    { label:'Pemburu sejati', desc:'Koleksi 10 kucing', done:cats.length>=10, icon:'<path d="M12 2l2.6 6.1L21 9l-5 4.4L17.4 20 12 16.6 6.6 20 8 13.4 3 9l6.4-.9L12 2z"/>' },
+    { label:'Streak 3 hari', desc:'Berburu 3 hari berturut', done:(player.streak||0)>=3, icon:'<path d="M13 2L4 14h7l-1 8 9-12h-7z"/>' },
+    { label:'Streak 7 hari', desc:'Berburu 7 hari berturut', done:(player.streak||0)>=7, icon:'<path d="M13 2L4 14h7l-1 8 9-12h-7z"/>' },
+    { label:'Level 5', desc:'Capai level 5', done:lvl>=5, icon:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>' },
+    { label:'Level 10', desc:'Capai level 10', done:lvl>=10, icon:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>' },
+    { label:'Tantang selesai', desc:`${done.length}/${CHALLENGES.length} tantangan`, done:done.length>=CHALLENGES.length, icon:'<path d="M20 6L9 17l-5-5"/>' },
+  ];
+  achievements.forEach(a=>{
+    const item = el('div',{class:'ach-item'+(a.done?' done':'')});
+    item.innerHTML = `<div class="ach-ico">${a.done?'<svg viewBox="0 0 24 24" fill="none" stroke="#D4AF37" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>':'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v4M12 16h.01"/></svg>'}</div><div class="ach-tx"><div class="ach-l">${a.label}</div><div class="ach-d">${a.desc}</div></div>${a.done?'<span class="ach-check"><svg viewBox="0 0 24 24" fill="none" stroke="#D4AF37" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg></span>':''}`;
+    ach.appendChild(item);
+  });
 }
 
 /* ---------------------------------------------------------------------

@@ -143,7 +143,7 @@
         <div class="ch-preview" id="ch-preview"></div>
       </div>
 
-      <div class="stat-row">
+      <div class="stat-row" id="stat-row" style="cursor:pointer;">
         <div class="stat-box"><div class="num" id="stat-cats">0</div><div class="lbl">Kucing</div></div>
         <div class="stat-box teal"><div class="num" id="stat-streak">0</div><div class="lbl">Streak</div></div>
         <div class="stat-box gold"><div class="num" id="stat-xp">0</div><div class="lbl">XP</div></div>
@@ -427,6 +427,29 @@
       <div class="shelter-decor-status mono" id="shelter-decor-status">0 / 0 dekorasi dipasang</div>
       <div class="shelter-actions">
         <button class="btn secondary block" id="shelter-edit">Atur penghuni &amp; dekorasi</button>
+      </div>
+    </section>
+
+    <!-- ================= STATISTIK ================= -->
+    <section class="screen" data-screen="stats" id="screen-stats">
+      <div class="screen-head">
+        <button class="back" data-back="home" aria-label="Kembali">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#3A2E2A" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+        </button>
+        <h2>Statistik Pemburu</h2>
+      </div>
+      <div class="stats-grid" id="stats-grid"></div>
+      <div class="stats-section">
+        <h4 class="stats-section-title">Koleksi per warna</h4>
+        <div class="color-bars" id="color-bars"></div>
+      </div>
+      <div class="stats-section">
+        <h4 class="stats-section-title">Kelangkaan</h4>
+        <div class="rarity-bars" id="rarity-bars"></div>
+      </div>
+      <div class="stats-section">
+        <h4 class="stats-section-title">Pencapaian</h4>
+        <div class="stats-achievements" id="stats-achievements"></div>
       </div>
     </section>
 

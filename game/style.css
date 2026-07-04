@@ -978,3 +978,47 @@ main{flex:1;display:flex;flex-direction:column;position:relative;overflow:hidden
   background:var(--charcoal);color:#fff;display:grid;place-items:center;
 }
 .decor-card .lock-ovl svg{width:11px;height:11px;}
+
+/* ---------- 41. Statistik pemburu ---------- */
+.stats-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px;}
+.stat-card{
+  background:var(--paper);border:1px solid var(--line);border-radius:var(--radius);
+  padding:12px 8px;text-align:center;box-shadow:var(--shadow-sm);
+  transition:transform .15s ease;
+}
+.stat-card:hover{transform:translateY(-2px);}
+.stat-card .sc-ico{width:30px;height:30px;margin:0 auto 6px;display:grid;place-items:center;}
+.stat-card .sc-ico svg{width:20px;height:20px;}
+.stat-card .sc-val{font-family:'Fredoka',sans-serif;font-weight:700;font-size:22px;color:var(--charcoal);line-height:1;}
+.stat-card .sc-lbl{font-size:10px;color:var(--text-mute);text-transform:uppercase;letter-spacing:.05em;margin-top:4px;font-family:'JetBrains Mono',monospace;}
+
+.stats-xp-bar{grid-column:1/-1;background:var(--paper);border:1px solid var(--line);border-radius:var(--radius);padding:12px 14px;box-shadow:var(--shadow-sm);}
+.stats-xp-bar .xp-bar-head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px;}
+.stats-xp-bar .xp-bar-head span:first-child{font-family:'Fredoka',sans-serif;font-weight:700;font-size:16px;color:var(--terracotta-deep);}
+.stats-xp-bar .xp-bar-head .muted{font-size:11px;font-family:'JetBrains Mono',monospace;color:var(--text-mute);}
+.stats-xp-bar .xp-bar-track{height:10px;background:var(--line);border-radius:999px;overflow:hidden;}
+.stats-xp-bar .xp-bar-track i{display:block;height:100%;background:linear-gradient(90deg,var(--terracotta),var(--gold));border-radius:999px;transition:width .5s ease;}
+
+.stats-section{margin-bottom:18px;}
+.stats-section-title{font-size:15px;font-family:'Fredoka',sans-serif;margin-bottom:10px;color:var(--charcoal);border-bottom:2px solid var(--line);padding-bottom:6px;}
+
+.cb-row{display:flex;align-items:center;gap:10px;margin-bottom:8px;}
+.cb-dot{width:14px;height:14px;border-radius:999px;flex-shrink:0;border:2px solid rgba(58,46,42,.12);}
+.cb-lbl{font-size:12px;font-weight:700;font-family:'Fredoka',sans-serif;color:var(--charcoal);width:60px;flex-shrink:0;}
+.cb-track{flex:1;height:10px;background:var(--cream-deep);border-radius:999px;overflow:hidden;border:1px solid var(--line);}
+.cb-track i{display:block;height:100%;border-radius:999px;transition:width .5s ease;}
+.cb-num{font-size:12px;font-family:'JetBrains Mono',monospace;font-weight:700;color:var(--charcoal);width:24px;text-align:right;flex-shrink:0;}
+
+.ach-item{
+  display:flex;align-items:center;gap:12px;background:var(--paper);border:1px solid var(--line);
+  border-radius:var(--radius);padding:11px 12px;margin-bottom:8px;transition:transform .15s ease;
+}
+.ach-item.done{background:rgba(212,175,55,.06);border-color:rgba(212,175,55,.25);}
+.ach-item .ach-ico{width:34px;height:34px;flex-shrink:0;border-radius:10px;display:grid;place-items:center;background:rgba(120,80,40,.08);color:var(--text-mute);}
+.ach-item.done .ach-ico{background:rgba(212,175,55,.18);color:var(--gold);}
+.ach-item .ach-ico svg{width:18px;height:18px;}
+.ach-item .ach-tx{flex:1;min-width:0;}
+.ach-item .ach-l{font-size:13.5px;font-weight:600;font-family:'Fredoka',sans-serif;color:var(--charcoal);}
+.ach-item .ach-d{font-size:12px;color:var(--text-soft);line-height:1.4;margin-top:1px;}
+.ach-item .ach-check{color:var(--gold);flex-shrink:0;}
+.ach-item .ach-check svg{width:20px;height:20px;}
