@@ -20,5 +20,35 @@
   "shortcuts": [
     { "name": "Buru kucing", "short_name": "Buru", "url": "./index.html?screen=find" },
     { "name": "Meongdex-mu", "short_name": "Koleksi", "url": "./index.html?screen=dex" }
+  ],
+  "screenshots": [
+    {
+      "src": "../assets/screenshots/game-home.png",
+      "sizes": "480x733",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Beranda Meongdex dengan maskot Si Oren, radar kucing, dan ringkasan aktivitas."
+    },
+    {
+      "src": "../assets/screenshots/game-dex.png",
+      "sizes": "480x484",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Layar Meongdex (koleksi corkboard) dengan kartu polaroid kucing."
+    },
+    {
+      "src": "../assets/screenshots/game-card.png",
+      "sizes": "436x345",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Kartu kucing polaroid dengan border kelangkaan, nama, dan quote flavor text."
+    },
+    {
+      "src": "../assets/screenshots/game-journal.png",
+      "sizes": "480x483",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Jurnal berburu harian dengan linimasa kucing yang ditemukan."
+    }
   ]
 }

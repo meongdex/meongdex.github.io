@@ -5,7 +5,7 @@
    pertama. Strategi: cache-first untuk app shell, network-first untuk
    CDN library (dengan fallback cache), dan no-cache untuk geo/kamera.
    ===================================================================== */
-const CACHE_VERSION = 'meongdex-v14';
+const CACHE_VERSION = 'meongdex-v15';
 const APP_SHELL = [
   './',
   './index.html',

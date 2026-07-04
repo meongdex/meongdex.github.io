@@ -177,7 +177,7 @@ const Store = {
       sessionStart:0,
       sessionCatCount:0,
       completedChallenges:[],
-      soundEnabled:true,
+      soundEnabled:false,
       shelterCatIds:[],  // id kucing yang menghuni rumah
       cardSkin:'default', // tema kartu kosmetik aktif
       activeDecor:[],     // id decor yang aktif di rumah
@@ -661,7 +661,11 @@ function renderFoodPicker(){
       selectedFood = f.id;
       renderFoodPicker();
     }});
-    b.appendChild(el('span',{class:'fico',style:`background:${f.color}22;color:${f.color};`}, [foodIconSvg(f.icon)]));
+    // Pakai prop `html` (innerHTML) supaya markup SVG di-parse sebagai elemen,
+    // bukan diperlakukan sebagai text node. Bug sebelumnya: foodIconSvg() return
+    // string HTML, tapi el() memperlakukan string child sebagai createTextNode,
+    // jadi markup SVG tampil sebagai teks literal (terlihat di Android Chrome).
+    b.appendChild(el('span',{class:'fico',style:`background:${f.color}22;color:${f.color};`, html:foodIconSvg(f.icon)}));
     b.appendChild(el('span',{class:'fn'}, f.label));
     if(f.xpBonus>0) b.appendChild(el('span',{class:'fx'}, `+${f.xpBonus} XP`));
     wrap.appendChild(b);
@@ -1552,8 +1556,9 @@ function miniCard(c){
   card.appendChild(thumb);
   card.appendChild(el('div',{class:'name'}, c.name));
   card.appendChild(el('div',{class:'mini-id'}, '#'+c.id.replace('MDX-','')));
-  // fav badge
-  const favBadge = el('div',{class:'fav-badge'}, '★');
+  // fav badge — pakai ICONS.star (SVG line-icon) bukan karakter Unicode,
+  // konsisten dengan signature visual "semua ikon SVG" sejak Fase 1.
+  const favBadge = el('div',{class:'fav-badge', html:ICONS.star});
   card.appendChild(favBadge);
   return card;
 }
@@ -2915,6 +2920,12 @@ $('#set-sound').addEventListener('click', ()=>{
     toast('Efek suara dimatikan','warn',ICONS.warn);
   }
 });
+// sinkronkan tampilan status suara saat app load (default sekarang false,
+// tapi pemain lama mungkin sudah menyalakan sebelumnya — sync dari state aktual).
+const _soundStatusInit = $('#sound-status');
+if(_soundStatusInit && player.soundEnabled){
+  _soundStatusInit.textContent = 'Aktif (dengkuran & chime)';
+}
 
 // challenges card -> buka sheet daftar tantangan
 $('#home-challenges').addEventListener('click', openChallengesSheet);

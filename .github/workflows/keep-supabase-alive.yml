@@ -1,0 +1,47 @@
+# Keep Supabase alive — cron mingguan untuk mencegah proyek free tier di-pause.
+# Supabase free tier otomatis pause proyek yang tidak ada aktivitas API selama
+# 7 hari berturut-turut. Workflow ini melakukan 1 panggilan API ringan per minggu
+# supaya proyek tetap aktif.
+#
+# Workflow ini TIDAK akan berjalan sebelum secrets berikut diisi di repo settings:
+#   - SUPABASE_URL        (contoh: https://abcdefgh.supabase.co)
+#   - SUPABASE_ANON_KEY   (anon public key, BUKAN service_role)
+#
+# Kalau secrets belum diisi, workflow tetap jalan tapi panggilan curl akan gagal
+# dengan pesan kosong — tidak ada side effect, tidak ada notifikasi error yang
+# mengganggu. Begitu secrets diisi, leaderboard akan tetap hidup otomatis.
+#
+# Lihat README.md bagian "Setup Leaderboard Supabase" untuk panduan lengkap.
+
+name: Keep Supabase alive
+
+on:
+  schedule:
+    - cron: '0 8 * * 1'  # tiap Senin 08:00 UTC
+  workflow_dispatch: {}  # allow manual trigger untuk testing
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Supabase REST API
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: |
+          if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_ANON_KEY" ]; then
+            echo "Secrets SUPABASE_URL / SUPABASE_ANON_KEY belum diisi. Skip ping."
+            echo "Isi di repo Settings > Secrets and variables > Actions kalau leaderboard sudah dikonfigurasi."
+            exit 0
+          fi
+          echo "Pinging $SUPABASE_URL/rest/v1/leaderboard?limit=1 ..."
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+            -H "apikey: $SUPABASE_ANON_KEY" \
+            -H "Authorization: Bearer $SUPABASE_ANON_KEY" \
+            "$SUPABASE_URL/rest/v1/leaderboard?limit=1")
+          echo "HTTP status: $STATUS"
+          if [ "$STATUS" = "200" ] || [ "$STATUS" = "401" ] || [ "$STATUS" = "404" ]; then
+            echo "Supabase alive (HTTP $STATUS). Proyek tidak akan di-pause minggu ini."
+          else
+            echo "Warning: Supabase merespons HTTP $STATUS. Mungkin ada masalah konfigurasi tabel."
+          fi
