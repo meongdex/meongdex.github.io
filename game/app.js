@@ -1857,6 +1857,9 @@ $$('#dex-filter button').forEach(b=>{
   });
 });
 
+// C6 addendum: tombol ekspor lembar album di Meongdex cork-head
+$('#btn-album-export').addEventListener('click', ()=> openAlbumSheet());
+
 async function openCatDetail(id){
   const c = await getCat(id);
   if(!c) return;
@@ -2513,6 +2516,189 @@ async function openShareSheet(cat){
     link.click();
     toast('Gambar kartu diunduh','success',ICONS.check);
   });
+}
+
+/**
+ * C6 addendum: Ekspor "lembar album" — montase grid 6 atau 9 kartu kucing
+ * sekaligus. Bergaya lembar album/binder koleksi fisik. Reuse helper
+ * loadImage + roundRect yang sudah dipakai drawShareCard.
+ * Pemain pilih jumlah kartu (6/9), lalu render canvas 1080x1080.
+ * Foto diambil dari currentCatsCache (urut by date terbaru atau by favorit).
+ */
+async function openAlbumSheet(){
+  const cats = currentCatsCache.slice();
+  if(cats.length === 0){
+    toast('Koleksi masih kosong, belum bisa bikin lembar album', 'warn', ICONS.warn);
+    return;
+  }
+  const content = el('div');
+  content.innerHTML = `
+    <h3>
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#E8804C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M3 9h18M9 3v18"/></svg>
+      Lembar album
+    </h3>
+    <p>Susun beberapa kartu jadi satu gambar siap dibagikan. Pilih jumlah kartu, lalu unduh.</p>
+    <div class="share-preview"><canvas id="album-canvas" width="1080" height="1080"></canvas></div>
+    <p class="preview-note">Pratinjau di atas. Lembar asli beresolusi penuh 1080x1080 saat diunduh.</p>
+    <div class="share-format-row">
+      <button class="share-format active" data-album="6">6 kartu<span class="dim">grid 2 x 3</span></button>
+      <button class="share-format" data-album="9">9 kartu<span class="dim">grid 3 x 3</span></button>
+    </div>
+    <div class="row gap-8 mt-12">
+      <button class="btn secondary block" id="album-close">Tutup</button>
+      <button class="btn block" id="album-download">
+        <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></svg>
+        Unduh lembar
+      </button>
+    </div>`;
+  openSheet(content);
+  let currentCount = 6;
+  const canvas = $('#album-canvas');
+  // urut: favorit dulu, lalu terbaru
+  const sortedCats = cats.slice().sort((a,b)=>{
+    const fa = (player.favorites||[]).includes(a.id) ? 1 : 0;
+    const fb = (player.favorites||[]).includes(b.id) ? 1 : 0;
+    if(fa !== fb) return fb - fa;
+    return new Date(b.date) - new Date(a.date);
+  });
+  await drawAlbumSheet(canvas, sortedCats, currentCount);
+
+  $$('.share-format').forEach(b=>{
+    b.addEventListener('click', async ()=>{
+      $$('.share-format').forEach(x=>x.classList.remove('active'));
+      b.classList.add('active');
+      currentCount = parseInt(b.dataset.album, 10) || 6;
+      await drawAlbumSheet(canvas, sortedCats, currentCount);
+    });
+  });
+  $('#album-close').addEventListener('click', closeSheet);
+  $('#album-download').addEventListener('click', ()=>{
+    const link = document.createElement('a');
+    link.download = `meongdex-album-${todayKey()}.png`;
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+    toast('Lembar album diunduh','success',ICONS.check);
+  });
+}
+
+/**
+ * Render montase grid kartu di canvas 1080x1080.
+ * count=6 -> grid 2x3, count=9 -> grid 3x3.
+ * Tiap cell: mini polaroid (foto + nama + id) dengan border kelangkaan.
+ */
+async function drawAlbumSheet(canvas, cats, count){
+  const W = canvas.width, H = canvas.height;
+  const ctx = canvas.getContext('2d');
+  // background cream + dot pattern (sama dengan share card)
+  ctx.fillStyle = '#FFF8ED';
+  ctx.fillRect(0,0,W,H);
+  ctx.fillStyle = 'rgba(58,46,42,0.05)';
+  for(let y=0; y<H; y+=34){ for(let x=0; x<W; x+=34){ ctx.beginPath(); ctx.arc(x,y,2,0,Math.PI*2); ctx.fill(); } }
+
+  const cols = count === 9 ? 3 : 2;
+  const rows = count === 9 ? 3 : 3;
+  const padOuter = 60;
+  const gap = 30;
+  const headerH = 80;
+  const footerH = 70;
+  const gridW = W - padOuter*2;
+  const gridH = H - padOuter*2 - headerH - footerH;
+  const cellW = (gridW - gap*(cols-1)) / cols;
+  const cellH = (gridH - gap*(rows-1)) / rows;
+
+  // header: judul "MEONGDEX" + tagline
+  ctx.fillStyle = '#3A2E2A';
+  ctx.font = '700 44px "Fredoka",sans-serif';
+  ctx.textBaseline = 'alphabetic';
+  ctx.textAlign = 'left';
+  ctx.fillText('Meongdex', padOuter, padOuter + 36);
+  ctx.fillStyle = '#8a7566';
+  ctx.font = '500 22px "Plus Jakarta Sans",sans-serif';
+  ctx.fillText('Lembar album koleksi', padOuter, padOuter + 64);
+  // count badge di kanan header
+  ctx.fillStyle = '#E8804C';
+  ctx.font = '700 22px "JetBrains Mono",monospace';
+  ctx.textAlign = 'right';
+  ctx.fillText(`${Math.min(count, cats.length)} dari ${cats.length} kucing`, W - padOuter, padOuter + 64);
+  ctx.textAlign = 'left';
+
+  // grid cells
+  const selected = cats.slice(0, count);
+  for(let i=0; i<count; i++){
+    const row = Math.floor(i / cols);
+    const col = i % cols;
+    const x = padOuter + col * (cellW + gap);
+    const y = padOuter + headerH + row * (cellH + gap);
+    if(i >= selected.length){
+      // empty slot: dotted border
+      ctx.strokeStyle = 'rgba(58,46,42,0.2)';
+      ctx.lineWidth = 2;
+      ctx.setLineDash([8, 8]);
+      roundRect(ctx, x, y, cellW, cellH, 18); ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle = 'rgba(58,46,42,0.3)';
+      ctx.font = '500 18px "Plus Jakarta Sans",sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('kosong', x + cellW/2, y + cellH/2);
+      ctx.textAlign = 'left';
+      continue;
+    }
+    const c = selected[i];
+    // bayangan
+    ctx.fillStyle = 'rgba(58,46,42,0.22)';
+    roundRect(ctx, x+5, y+8, cellW, cellH, 18); ctx.fill();
+    // kartu putih
+    ctx.fillStyle = '#FFFDF8';
+    roundRect(ctx, x, y, cellW, cellH, 18); ctx.fill();
+    // border kelangkaan
+    const border = c.rarity==='langka' ? '#D4AF37' : (c.rarity==='epik' ? '#9b6dd4' : (c.rarity==='legendaris' ? '#C9652F' : '#4A9B8E'));
+    ctx.strokeStyle = border; ctx.lineWidth = 4;
+    roundRect(ctx, x, y, cellW, cellH, 18); ctx.stroke();
+    // foto
+    const photoPad = 12;
+    const photoX = x + photoPad, photoY = y + photoPad;
+    const photoW = cellW - photoPad*2, photoH = photoW; // square photo
+    ctx.fillStyle = '#F3D9AE';
+    roundRect(ctx, photoX, photoY, photoW, photoH, 12); ctx.fill();
+    if(c.photo){
+      try{
+        const img = await loadImage(c.photo);
+        const scale = Math.max(photoW/img.width, photoH/img.height);
+        const dw = img.width*scale, dh = img.height*scale;
+        ctx.save();
+        roundRect(ctx, photoX, photoY, photoW, photoH, 12); ctx.clip();
+        ctx.drawImage(img, photoX+(photoW-dw)/2, photoY+(photoH-dh)/2, dw, dh);
+        ctx.restore();
+      }catch(e){}
+    }
+    // id badge
+    ctx.fillStyle = 'rgba(58,46,42,0.82)';
+    roundRect(ctx, photoX+8, photoY+8, 70, 26, 7); ctx.fill();
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 14px "JetBrains Mono",monospace';
+    ctx.textBaseline = 'middle';
+    ctx.textAlign = 'left';
+    ctx.fillText('#'+c.id.replace('MDX-',''), photoX+14, photoY+22);
+    // nama di bawah foto
+    const nameY = photoY + photoH + 22;
+    ctx.fillStyle = '#3A2E2A';
+    ctx.font = '600 22px "Fredoka",sans-serif';
+    ctx.textBaseline = 'alphabetic';
+    let displayName = c.name || '';
+    // truncate if too long
+    const maxNameW = cellW - 20;
+    while(ctx.measureText(displayName).width > maxNameW && displayName.length > 3){
+      displayName = displayName.slice(0, -2);
+    }
+    if(displayName !== (c.name||'')) displayName += '…';
+    ctx.fillText(displayName, x + 10, nameY);
+  }
+  // footer: watermark
+  ctx.fillStyle = 'rgba(58,46,42,0.5)';
+  ctx.font = '500 14px "JetBrains Mono",monospace';
+  ctx.textAlign = 'center';
+  ctx.fillText('meongdex.github.io · ' + new Date().toLocaleDateString('id-ID'), W/2, H - padOuter/2);
+  ctx.textAlign = 'left';
 }
 
 async function drawShareCard(canvas, cat, h){

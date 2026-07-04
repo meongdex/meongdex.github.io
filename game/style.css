@@ -472,9 +472,22 @@ main{flex:1;display:flex;flex-direction:column;position:relative;overflow:hidden
 .name-edit input:focus{outline:none;border-color:var(--terracotta);}
 
 /* ---------- 15. Meongdex corkboard ---------- */
-.cork-head{display:flex;justify-content:space-between;align-items:baseline;margin:4px 0 12px;}
+.cork-head{display:flex;justify-content:space-between;align-items:center;margin:4px 0 12px;gap:8px;flex-wrap:wrap;}
 .cork-head h2{font-size:20px;}
 .cork-head .count{font-size:12px;font-family:'JetBrains Mono',monospace;color:var(--teal-deep);background:rgba(74,155,142,.12);padding:5px 11px;border-radius:999px;font-weight:700;}
+/* C6 addendum: tombol ekspor lembar album */
+.album-export-btn{
+  display:inline-flex;align-items:center;gap:6px;
+  font-size:12px;font-family:'JetBrains Mono',monospace;font-weight:700;
+  background:var(--terracotta);color:var(--charcoal);
+  border:none;padding:7px 12px;border-radius:999px;cursor:pointer;
+  transition:transform .12s ease,background .12s ease;
+}
+.album-export-btn:hover{background:var(--terracotta-deep);color:var(--charcoal);transform:translateY(-1px);}
+.album-export-btn .lbl{display:inline;}
+@media (max-width:380px){
+  .album-export-btn .lbl{display:none;}
+}
 .cork-filter{display:flex;gap:6px;margin-bottom:12px;overflow-x:auto;padding-bottom:4px;-ms-overflow-style:none;scrollbar-width:none;}
 .cork-filter::-webkit-scrollbar{display:none;}
 .cork-filter button{
