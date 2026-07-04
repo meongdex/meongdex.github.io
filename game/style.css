@@ -427,7 +427,41 @@ main{flex:1;display:flex;flex-direction:column;position:relative;overflow:hidden
   width:min(260px,82vw);background:var(--paper);border-radius:var(--radius-lg);padding:10px;
   box-shadow:var(--shadow-lg);border:3px solid var(--rarity-common);position:relative;
   transform:rotate(-1deg);transition:transform .3s ease;
+  /* E1 addendum: tilt 3D + holografik. CSS custom properties --rx/--ry di-set
+     dari JS pointermove (atau deviceorientation). Default 0 = netral. */
+  --rx:0deg;--ry:0deg;--hx:50%;--hy:50%;
+  transform-style:preserve-3d;
+  transform:perspective(900px) rotateX(var(--ry)) rotateY(var(--rx)) rotate(-1deg);
+  transition:transform .15s ease-out;
 }
+.trading-card.tilt-active{
+  /* saat pointer aktif, transisi lebih cepat supaya responsif */
+  transition:transform .08s ease-out;
+}
+/* lapisan kilau holografik reaktif (E1 addendum) */
+.trading-card .holo-sheen{
+  position:absolute;inset:0;border-radius:var(--radius-lg);pointer-events:none;
+  background:radial-gradient(circle at var(--hx) var(--hy),
+    rgba(255,255,255,.35) 0%, rgba(255,255,255,.12) 25%, transparent 55%);
+  mix-blend-mode:overlay;opacity:0;transition:opacity .2s ease;
+  z-index:3;
+}
+.trading-card.tilt-active .holo-sheen{opacity:1;}
+.trading-card.rare .holo-sheen{
+  background:radial-gradient(circle at var(--hx) var(--hy),
+    rgba(255,255,255,.45) 0%, rgba(212,175,55,.25) 25%, transparent 55%);
+}
+.trading-card.epic .holo-sheen{
+  background:radial-gradient(circle at var(--hx) var(--hy),
+    rgba(255,255,255,.5) 0%, rgba(155,109,212,.35) 25%, transparent 55%);
+}
+.trading-card.legendary .holo-sheen{
+  background:conic-gradient(from calc((var(--rx) + var(--ry)) * 2) at var(--hx) var(--hy),
+    rgba(194,24,91,.35), rgba(212,175,55,.35), rgba(74,155,142,.35),
+    rgba(194,24,91,.35));
+  opacity:.7;
+}
+.trading-card.tilt-active.legendary .holo-sheen{opacity:1;}
 .trading-card.rare{border-color:var(--rarity-rare);}
 .trading-card.rare::after{
   content:"";position:absolute;inset:-3px;border-radius:var(--radius-lg);
@@ -630,6 +664,69 @@ main{flex:1;display:flex;flex-direction:column;position:relative;overflow:hidden
 /* prefer reduced motion */
 @media (prefers-reduced-motion:reduce){
   *{animation-duration:.01ms !important;animation-iteration-count:1 !important;transition-duration:.01ms !important;}
+  /* E1 addendum: matikan tilt 3D untuk pemain yang minta motion dikurangi.
+     Kartu tetap tampil normal dengan shimmer statis yang sudah ada. */
+  .trading-card{transform:rotate(-1deg) !important;}
+  .trading-card .holo-sheen{opacity:0 !important;}
+  /* E2 addendum: matikan flip 3D reveal ceremony, langsung tampil penuh */
+  .reveal-stage .reveal-card{transform:none !important;opacity:1 !important;}
+  .reveal-stage .reveal-silhouette{display:none !important;}
+}
+
+/* ---------- E2 addendum: Reveal ceremony ("upacara buka kartu") ---------- */
+.reveal-stage{
+  position:fixed;inset:0;z-index:200;display:none;
+  align-items:center;justify-content:center;
+  background:rgba(58,46,42,.85);backdrop-filter:blur(6px);
+  padding:20px;cursor:pointer;
+}
+.reveal-stage.active{display:flex;animation:fadeIn .3s ease;}
+.reveal-stage .skip-hint{
+  position:absolute;bottom:30px;left:50%;transform:translateX(-50%);
+  font-size:11px;font-family:'JetBrains Mono',monospace;color:rgba(255,248,237,.6);
+  letter-spacing:.04em;animation:skipPulse 2s ease-in-out infinite;
+}
+@keyframes skipPulse{0%,100%{opacity:.5;}50%{opacity:1;}}
+.reveal-card{
+  width:min(280px,85vw);background:var(--paper);border-radius:var(--radius-lg);padding:12px;
+  box-shadow:0 20px 50px -10px rgba(0,0,0,.6);position:relative;
+  transform-style:preserve-3d;transform:rotateY(180deg);opacity:0;
+  transition:transform .8s cubic-bezier(.2,.8,.2,1),opacity .4s ease;
+}
+.reveal-card.flipped{transform:rotateY(0);opacity:1;}
+.reveal-silhouette{
+  position:absolute;inset:0;border-radius:var(--radius-lg);
+  background:linear-gradient(135deg,#3A2E2A,#5C4B44);
+  display:grid;place-items:center;color:rgba(255,248,237,.4);
+  font-family:'Fredoka',sans-serif;font-weight:700;font-size:14px;
+  letter-spacing:.1em;animation:silhouettePulse 1.2s ease-in-out infinite;
+  backface-visibility:hidden;
+}
+@keyframes silhouettePulse{
+  0%,100%{opacity:.7;transform:scale(1);}
+  50%{opacity:1;transform:scale(1.02);}
+}
+.reveal-stage.active .reveal-card{animation:revealPulse 1.2s ease-in-out;}
+@keyframes revealPulse{
+  0%,100%{transform:rotateY(180deg) scale(1);}
+  50%{transform:rotateY(180deg) scale(1.04);}
+}
+
+/* ---------- E3 addendum: Maskot Si Oren blink + idle ---------- */
+.mascot-blink{
+  /* dipicu via JS: tambah class .blink ke elemen mata SVG */
+  animation:blink .25s ease-in-out;
+}
+@keyframes blink{
+  0%,100%{transform:scaleY(1);}
+  50%{transform:scaleY(.1);}
+}
+
+/* ---------- E3 addendum: Stagger fade-in di Jurnal ---------- */
+.journal-day{animation:journalFadeIn .4s ease both;}
+@keyframes journalFadeIn{
+  from{opacity:0;transform:translateY(10px);}
+  to{opacity:1;transform:none;}
 }
 
 /* ---------- 21. Journal / Jurnal Berburu ---------- */
@@ -875,6 +972,17 @@ main{flex:1;display:flex;flex-direction:column;position:relative;overflow:hidden
 @media (max-width:380px){
   .bottom-nav button{font-size:9px;letter-spacing:.02em;}
   .bottom-nav button .ico{width:20px;height:20px;}
+}
+/* D4 addendum: di layar sangat sempit (<=360px, Android low-end umum),
+   sembunyikan label nav dan andalkan ikon saja supaya 7 tombol tetap
+   nyaman dibaca. Ikon sudah cukup dikenali + ada aria-label. Keputusan
+   ini dicatat sebagai langkah proaktif — audit D4 menyebut "coba dulu di
+   device asli sebelum ubah struktur navigasi", dan media query ini
+   menjawab skenario terburuk tanpa mengubah IA (tidak gabung Peta+Rumah). */
+@media (max-width:360px){
+  .bottom-nav button{font-size:0;padding:8px 2px;}
+  .bottom-nav button .ico{width:22px;height:22px;}
+  .bottom-nav button .badge{font-size:8px;padding:1px 4px;}
 }
 
 /* ---------- 35. Rumah / Shelter ---------- */

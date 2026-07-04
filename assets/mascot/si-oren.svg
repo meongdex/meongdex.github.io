@@ -14,11 +14,15 @@
   <!-- garis samping badan -->
   <path d="M45 100 q10 20 0 40" stroke="#C9652F" stroke-width="5" fill="none" stroke-linecap="round" opacity="0.7"/>
   <path d="M155 100 q-10 20 0 40" stroke="#C9652F" stroke-width="5" fill="none" stroke-linecap="round" opacity="0.7"/>
-  <!-- mata -->
-  <circle cx="82" cy="108" r="7.5" fill="#3A2E2A"/>
-  <circle cx="118" cy="108" r="7.5" fill="#3A2E2A"/>
-  <circle cx="84.5" cy="105" r="2.4" fill="#ffffff"/>
-  <circle cx="120.5" cy="105" r="2.4" fill="#ffffff"/>
+  <!-- mata (E3 addendum: data-mascot-eye untuk blink animation) -->
+  <g class="mascot-eye" data-mascot-eye="left" style="transform-origin:82px 108px;">
+    <circle cx="82" cy="108" r="7.5" fill="#3A2E2A"/>
+    <circle cx="84.5" cy="105" r="2.4" fill="#ffffff"/>
+  </g>
+  <g class="mascot-eye" data-mascot-eye="right" style="transform-origin:118px 108px;">
+    <circle cx="118" cy="108" r="7.5" fill="#3A2E2A"/>
+    <circle cx="120.5" cy="105" r="2.4" fill="#ffffff"/>
+  </g>
   <!-- hidung &amp; mulut -->
   <path d="M96 120 q4 4 4 4 q0 0 4 -4" stroke="#3A2E2A" stroke-width="3" fill="none" stroke-linecap="round"/>
   <path d="M100 120 v4" stroke="#3A2E2A" stroke-width="3" stroke-linecap="round"/>

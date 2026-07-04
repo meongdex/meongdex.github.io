@@ -384,6 +384,7 @@
           <div class="sub" id="card-sub">— · —</div>
           <div class="tag-row" id="card-tags"></div>
           <div class="quote" id="card-quote">"..."</div>
+          <div class="holo-sheen" aria-hidden="true"></div>
         </div>
         <div class="name-edit">
           <input id="card-name-input" type="text" maxlength="24" placeholder="Beri nama kucing ini" />
@@ -631,6 +632,16 @@
 <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd@2.2.3/dist/coco-ssd.min.js" defer></script>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
 <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin="" defer></script>
+
+<!-- E2 addendum: stage untuk reveal ceremony "upacara buka kartu" -->
+<div class="reveal-stage" id="reveal-stage" aria-hidden="true">
+  <div class="reveal-card" id="reveal-card">
+    <div class="reveal-silhouette" id="reveal-silhouette">MEONGDEX</div>
+    <div id="reveal-card-inner"></div>
+  </div>
+  <div class="skip-hint">tap di mana saja untuk skip</div>
+</div>
+
 <script src="app.js" defer></script>
 </body>
 </html>

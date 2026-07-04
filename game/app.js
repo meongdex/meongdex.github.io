@@ -1302,6 +1302,8 @@ function renderNewCard(){
   $('#card-name-input').value = c.name;
   // color picker di meta
   renderColorPicker();
+  // E1 addendum: attach tilt 3D + holografik ke kartu baru
+  attachTiltToNewCard();
 }
 
 function renderColorPicker(){
@@ -1961,6 +1963,8 @@ async function openCatDetail(id){
   const favBtn = $('#detail-fav');
   favBtn.classList.toggle('active', isFav);
   $('#fav-label').textContent = isFav ? 'Hapus favorit' : 'Favorit';
+  // E1 addendum: attach tilt 3D ke kartu di detail sheet
+  setTimeout(attachTiltToDetailCard, 200);
   // skin picker
   const skinHost = $('#skin-picker-host');
   if(skinHost) renderSkinPicker(skinHost, player.cardSkin, (newSkin)=>{
@@ -2100,6 +2104,10 @@ async function renderJournal(){
       entry.appendChild(el('div',{class:'xp'}, `+${xp}`));
       dayWrap.appendChild(entry);
     });
+    // E3 addendum: stagger fade-in delay supaya linimasa "mengalir turun"
+    if(!prefersReducedMotion){
+      dayWrap.style.animationDelay = (days.indexOf(key) * 0.08) + 's';
+    }
     list.appendChild(dayWrap);
   });
 }
@@ -3516,6 +3524,252 @@ $('#set-install').addEventListener('click', async ()=>{
          <div class="row gap-8 mt-12"><button class="btn block" onclick="document.getElementById('overlay').classList.remove('active')">Mengerti</button></div>`;
     openSheet(content);
   }
+});
+
+/* ---------------------------------------------------------------------
+   14d. Momen "wow" kartu (Bagian E addendum) — tilt 3D, reveal ceremony,
+   maskot blink, jurnal stagger. Semua hormati prefers-reduced-motion.
+   --------------------------------------------------------------------- */
+
+/**
+ * E1 addendum: attach tilt 3D + holografik reaktif ke elemen .trading-card.
+ * Pointer device: pointermove -> set --rx/--ry/--hx/--hy CSS custom properties.
+ * Touch device: coba deviceorientation (perlu izin di iOS); fallback auto-sweep.
+ * Hormati prefers-reduced-motion: skip total kalau aktif.
+ */
+const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+function attachCardTilt(cardEl){
+  if(!cardEl || prefersReducedMotion) return;
+  // skip kalau sudah pernah attach
+  if(cardEl.dataset.tiltAttached) return;
+  cardEl.dataset.tiltAttached = '1';
+
+  // pointer move handler (mouse + touch drag)
+  const onMove = (e)=>{
+    const rect = cardEl.getBoundingClientRect();
+    const x = (e.clientX || (e.touches && e.touches[0]?.clientX) || 0) - rect.left;
+    const y = (e.clientY || (e.touches && e.touches[0]?.clientY) || 0) - rect.top;
+    if(x === 0 && y === 0) return;
+    // normalisasi -1..1 relatif ke pusat kartu
+    const nx = (x / rect.width) * 2 - 1;   // -1 (kiri) .. 1 (kanan)
+    const ny = (y / rect.height) * 2 - 1;  // -1 (atas) .. 1 (bawah)
+    // rotateY mengikuti X (kursor kanan = kartu miring kanan), rotateX kebalikan Y
+    const maxTilt = 12; // derajat
+    const rx = (nx * maxTilt).toFixed(2);
+    const ry = (-ny * maxTilt).toFixed(2);
+    cardEl.style.setProperty('--rx', rx + 'deg');
+    cardEl.style.setProperty('--ry', ry + 'deg');
+    cardEl.style.setProperty('--hx', (nx * 50 + 50).toFixed(1) + '%');
+    cardEl.style.setProperty('--hy', (ny * 50 + 50).toFixed(1) + '%');
+    cardEl.classList.add('tilt-active');
+  };
+  const onLeave = ()=>{
+    cardEl.classList.remove('tilt-active');
+    cardEl.style.setProperty('--rx', '0deg');
+    cardEl.style.setProperty('--ry', '0deg');
+    cardEl.style.setProperty('--hx', '50%');
+    cardEl.style.setProperty('--hy', '50%');
+  };
+  cardEl.addEventListener('pointermove', onMove);
+  cardEl.addEventListener('pointerleave', onLeave);
+  cardEl.addEventListener('pointercancel', onLeave);
+
+  // auto-sweep sekali saat kartu pertama muncul (untuk efek "hidup")
+  // cuma jalan kalau deviceorientation tidak tersedia/ditolak
+  let autoSwept = false;
+  function autoSweepOnce(){
+    if(autoSwept) return;
+    autoSwept = true;
+    let t = 0;
+    const sweep = setInterval(()=>{
+      t += 0.08;
+      if(t >= Math.PI){
+        clearInterval(sweep);
+        onLeave();
+        return;
+      }
+      const nx = Math.sin(t) * 0.6;
+      const ny = Math.cos(t * 0.7) * 0.3;
+      cardEl.style.setProperty('--rx', (nx * 12).toFixed(2) + 'deg');
+      cardEl.style.setProperty('--ry', (-ny * 12).toFixed(2) + 'deg');
+      cardEl.style.setProperty('--hx', (nx * 50 + 50).toFixed(1) + '%');
+      cardEl.style.setProperty('--hy', (ny * 50 + 50).toFixed(1) + '%');
+      cardEl.classList.add('tilt-active');
+    }, 40);
+  }
+
+  // deviceorientation untuk mobile (perlu izin eksplisit di iOS 13+)
+  if(window.DeviceOrientationEvent){
+    // cek apakah perlu request permission (iOS)
+    if(typeof DeviceOrientationEvent.requestPermission === 'function'){
+      // iOS: butuh gesture user. Tunggu tap pertama di kartu.
+      cardEl.addEventListener('click', function iosPermissionTap(){
+        DeviceOrientationEvent.requestPermission().then(state=>{
+          if(state === 'granted'){
+            window.addEventListener('deviceorientation', onOrient);
+            cardEl.removeEventListener('click', iosPermissionTap);
+          } else {
+            autoSweepOnce();
+          }
+        }).catch(()=> autoSweepOnce());
+      }, { once: true });
+    } else {
+      // Android: langsung listen
+      window.addEventListener('deviceorientation', onOrient);
+    }
+  } else {
+    autoSweepOnce();
+  }
+  function onOrient(ev){
+    // gamma: left-right tilt (-90..90), beta: front-back tilt (-180..180)
+    const g = ev.gamma || 0;
+    const b = ev.beta || 0;
+    const maxTilt = 10;
+    const rx = Math.max(-maxTilt, Math.min(maxTilt, g / 6)).toFixed(2);
+    const ry = Math.max(-maxTilt, Math.min(maxTilt, (b - 45) / 8)).toFixed(2);
+    cardEl.style.setProperty('--rx', rx + 'deg');
+    cardEl.style.setProperty('--ry', ry + 'deg');
+    cardEl.style.setProperty('--hx', (parseFloat(rx)/maxTilt * 50 + 50).toFixed(1) + '%');
+    cardEl.style.setProperty('--hy', (parseFloat(ry)/maxTilt * 50 + 50).toFixed(1) + '%');
+    cardEl.classList.add('tilt-active');
+  }
+}
+
+/**
+ * E2 addendum: reveal ceremony ("upacara buka kartu") sebelum kartu tampil penuh.
+ * Kartu muncul dalam kondisi silhouette/back-side, berdenyut 2-3x, lalu flip
+ * untuk mengungkap wajah + confetti + haptic. Durasi proporsional ke rarity.
+ * Bisa di-skip dengan tap di mana saja.
+ * Return Promise yang resolve ketika ceremony selesai (atau di-skip).
+ */
+function playRevealCeremony(cat, onRevealed){
+  if(prefersReducedMotion){
+    // skip ceremony total, langsung panggil callback
+    if(onRevealed) onRevealed();
+    return;
+  }
+  const stage = $('#reveal-stage');
+  const card = $('#reveal-card');
+  const silhouette = $('#reveal-silhouette');
+  const inner = $('#reveal-card-inner');
+  if(!stage || !card){ if(onRevealed) onRevealed(); return; }
+
+  // durasi build-up per rarity
+  const buildMs = cat.rarity==='legendaris' ? 1300
+                : cat.rarity==='epik' ? 900
+                : cat.rarity==='langka' ? 600
+                : 400;
+
+  // isi inner dengan wajah kartu (akan terlihat setelah flip)
+  const rar = RARITIES[cat.rarity] || RARITIES.biasa;
+  const d = new Date(cat.date);
+  inner.innerHTML = `
+    <div class="id">#${cat.id.replace('MDX-','')}</div>
+    <div class="rarity-tag" style="background:${rar.color};color:${rar.ink};">${rar.label}</div>
+    <div class="photo" style="height:220px;"><img src="${cat.photo}" alt="${escapeHtml(cat.name)}"></div>
+    <h4>${escapeHtml(cat.name)}</h4>
+    <div class="tag-row"><span>${escapeHtml((COLORS.find(x=>x.id===cat.color)||{}).label || cat.color)}</span></div>
+    <div class="quote">"${escapeHtml(cat.quote)}"</div>
+    <div class="holo-sheen" aria-hidden="true"></div>`;
+  // terapkan rarity class ke reveal-card supaya styling holo-sheen sesuai
+  card.classList.remove('rare','epic','legendary');
+  if(cat.rarity==='langka') card.classList.add('rare');
+  else if(cat.rarity==='epik') card.classList.add('epic');
+  else if(cat.rarity==='legendaris') card.classList.add('legendary','rare');
+
+  // tampilkan stage
+  stage.classList.add('active');
+  stage.setAttribute('aria-hidden','false');
+  card.classList.remove('flipped');
+  silhouette.style.display = 'grid';
+
+  let skipped = false;
+  let revealed = false;
+  function skip(){
+    if(skipped) return;
+    skipped = true;
+    if(!revealed){ doReveal(); }
+  }
+  function doReveal(){
+    if(revealed) return;
+    revealed = true;
+    silhouette.style.display = 'none';
+    card.classList.add('flipped');
+    // attach tilt ke reveal-card supaya langsung interaktif setelah flip
+    setTimeout(()=> attachCardTilt(card), 400);
+    // trigger confetti + haptic + chime di momen flip
+    if(cat.rarity==='legendaris' || cat.rarity==='epik'){
+      launchConfetti(cat.rarity==='legendaris' ? 60 : 30);
+    }
+    if(navigator.vibrate) navigator.vibrate(cat.rarity==='legendaris'?[20,40,20,40,20]:[15]);
+    playChime();
+    if(onRevealed) onRevealed();
+  }
+  // tap di mana saja = skip
+  stage.addEventListener('click', skip, { once: true });
+  // setelah build-up, otomatis reveal
+  setTimeout(doReveal, buildMs);
+  // auto-close stage 3.5s setelah reveal
+  setTimeout(()=>{
+    if(revealed){
+      stage.classList.remove('active');
+      stage.setAttribute('aria-hidden','true');
+    }
+  }, buildMs + 3500);
+}
+
+/**
+ * E3 addendum: maskot Si Oren blink di Beranda.
+ * Cari elemen mata SVG di onboarding/beranda, jalankan blink acak tiap 4-6s.
+ */
+let mascotBlinkTimer = null;
+function startMascotBlink(){
+  if(prefersReducedMotion) return;
+  if(mascotBlinkTimer) clearInterval(mascotBlinkTimer);
+  function doBlink(){
+    // cari semua elemen mata di SVG maskot (circle/ellipse dengan fill gelap)
+    const eyes = document.querySelectorAll('.mascot-eye, [data-mascot-eye]');
+    if(eyes.length === 0) return;
+    eyes.forEach(eye=>{
+      eye.classList.remove('mascot-blink');
+      // reflow supaya animation restart
+      void eye.offsetWidth;
+      eye.classList.add('mascot-blink');
+    });
+  }
+  function scheduleNext(){
+    const delay = 4000 + Math.random() * 2000; // 4-6s
+    mascotBlinkTimer = setTimeout(()=>{
+      doBlink();
+      scheduleNext();
+    }, delay);
+  }
+  scheduleNext();
+}
+
+/**
+ * E3 addendum: attach tilt ke kartu baru saat renderNewCard dipanggil.
+ * Dipanggil dari renderNewCard setelah DOM siap.
+ */
+function attachTiltToNewCard(){
+  const card = $('#new-card');
+  if(card) attachCardTilt(card);
+}
+
+/**
+ * E3 addendum: attach tilt ke kartu di detail sheet (openCatDetail).
+ * Dipanggil setelah sheet terbuka.
+ */
+function attachTiltToDetailCard(){
+  // kartu di detail sheet pakai class .trading-card juga
+  const card = document.querySelector('.sheet .trading-card');
+  if(card) attachCardTilt(card);
+}
+
+// Panggil startMascotBlink setelah app load
+window.addEventListener('load', ()=>{
+  setTimeout(startMascotBlink, 1500);
 });
 
 /* ---------------------------------------------------------------------
