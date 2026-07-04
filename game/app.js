@@ -142,6 +142,8 @@ const Store = {
       cardSkin:'default', // tema kartu kosmetik aktif
       activeDecor:[],     // id decor yang aktif di rumah
       lastEventSeen:'',   // id event terakhir yang dilihat (untuk notifikasi sekali)
+      questCompletedSeen:false, // flag quest tracker sudah selesai & dilihat
+      favorites:[],       // id kucing favorit
     };
   },
   load(){
@@ -613,6 +615,25 @@ function playChime(){
   });
 }
 
+// Confetti animation untuk catch legendaris & epik
+function launchConfetti(count=50){
+  const colors = ['#E8804C','#D4AF37','#4A9B8E','#F2C6C2','#C9652F','#9b6dd4'];
+  const wrap = el('div',{class:'confetti-wrap'});
+  document.body.appendChild(wrap);
+  for(let i=0;i<count;i++){
+    const p = el('div',{class:'confetti-piece'});
+    p.style.left = Math.random()*100 + '%';
+    p.style.background = colors[Math.floor(Math.random()*colors.length)];
+    p.style.animationDuration = (1.5 + Math.random()*1.5) + 's';
+    p.style.animationDelay = Math.random()*0.5 + 's';
+    p.style.width = (6 + Math.random()*8) + 'px';
+    p.style.height = (10 + Math.random()*8) + 'px';
+    p.style.borderRadius = Math.random()>0.5 ? '2px' : '999px';
+    wrap.appendChild(p);
+  }
+  setTimeout(()=> wrap.remove(), 4000);
+}
+
 const throwBtn = $('#btn-throw');
 function startCharge(e){
   e.preventDefault();
@@ -1032,6 +1053,10 @@ async function saveCat(){
     btn.disabled = false;
     toast(`Nomor ${savedCat.id} terdaftar di Meongdex-mu!`, savedCat.rarity==='langka'?'gold':'success', ICONS.star);
     playChime();
+    // confetti untuk legendaris & epik
+    if(savedCat.rarity==='legendaris' || savedCat.rarity==='epik'){
+      launchConfetti(savedCat.rarity==='legendaris' ? 60 : 30);
+    }
     if(eventBonus > 0 && ev){
       setTimeout(()=> toast(`Bonus event ${ev.label}: +${eventBonus} XP`, 'gold', ICONS.star), 500);
     }
@@ -1075,12 +1100,22 @@ let currentFilter = 'all';
 let currentSearch = '';
 
 async function renderDex(){
-  currentCatsCache = await allCats();
+  // tampilkan skeleton saat loading
   const cork = $('#dex-cork');
+  cork.innerHTML='';
+  for(let i=0;i<4;i++){
+    const sk = el('div',{class:'skel-mini-card'});
+    sk.innerHTML = '<div class="skel-pin"></div><div class="skel-thumb skeleton"></div><div class="skel-name skeleton"></div>';
+    cork.appendChild(sk);
+  }
+  // small delay untuk efek skeleton (lebih natural)
+  await new Promise(r=>setTimeout(r,250));
+  currentCatsCache = await allCats();
   $('#dex-count').textContent = `${currentCatsCache.length} kucing`;
   const q = currentSearch.toLowerCase().trim();
   const filtered = currentCatsCache.filter(c=>{
     if(currentFilter==='all') {/* ok */}
+    else if(currentFilter==='fav'){ if(!(player.favorites||[]).includes(c.id)) return false; }
     else if(['biasa','langka','epik','legendaris'].includes(currentFilter)){ if(c.rarity!==currentFilter) return false; }
     else { if(c.color!==currentFilter) return false; }
     if(q && !(c.name||'').toLowerCase().includes(q)) return false;
@@ -1147,6 +1182,7 @@ function miniCard(c){
   if(c.rarity==='langka') extraClass=' rare';
   else if(c.rarity==='epik') extraClass=' epic';
   else if(c.rarity==='legendaris') extraClass=' legendary rare';
+  if((player.favorites||[]).includes(c.id)) extraClass+=' fav';
   const card = el('div',{class:'mini-card'+extraClass, onclick:()=>openCatDetail(c.id)});
   card.appendChild(el('div',{class:'pin'}));
   const thumb = el('div',{class:'thumb'});
@@ -1154,6 +1190,9 @@ function miniCard(c){
   card.appendChild(thumb);
   card.appendChild(el('div',{class:'name'}, c.name));
   card.appendChild(el('div',{class:'mini-id'}, '#'+c.id.replace('MDX-','')));
+  // fav badge
+  const favBadge = el('div',{class:'fav-badge'}, '★');
+  card.appendChild(favBadge);
   return card;
 }
 
@@ -1213,10 +1252,19 @@ async function openCatDetail(id){
         <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg>
         Bagikan
       </button>
+      <button class="btn secondary block" id="detail-fav">
+        <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-4.9-9.5-9C.7 8.8 2 5 5.5 5c2 0 3.3 1.3 4 2.3.7-1 2-2.3 4-2.3 3.5 0 4.8 3.8 3 7-2.5 4.1-9.5 9-9.5 9z"/></svg>
+        <span id="fav-label">Favorit</span>
+      </button>
       <button class="btn secondary block" id="detail-rename">Ganti nama</button>
       <button class="btn block danger" id="detail-delete" style="background:#a8462e;color:#fff;">Hapus</button>
     </div>`;
   openSheet(content);
+  // set fav state
+  const isFav = (player.favorites||[]).includes(c.id);
+  const favBtn = $('#detail-fav');
+  favBtn.classList.toggle('active', isFav);
+  $('#fav-label').textContent = isFav ? 'Hapus favorit' : 'Favorit';
   // skin picker
   const skinHost = $('#skin-picker-host');
   if(skinHost) renderSkinPicker(skinHost, player.cardSkin, (newSkin)=>{
@@ -1224,6 +1272,17 @@ async function openCatDetail(id){
     toast('Tema kartu diterapkan','',ICONS.check);
   });
   $('#detail-share').addEventListener('click', ()=> openShareSheet(c));
+  $('#detail-fav').addEventListener('click', ()=>{
+    player.favorites = player.favorites || [];
+    const idx = player.favorites.indexOf(c.id);
+    if(idx>=0){ player.favorites.splice(idx,1); toast('Dihapus dari favorit','warn',ICONS.warn); }
+    else { player.favorites.push(c.id); toast('Ditambahkan ke favorit','success',ICONS.star); playChime(); }
+    Store.save(player);
+    const now = (player.favorites||[]).includes(c.id);
+    favBtn.classList.toggle('active', now);
+    $('#fav-label').textContent = now ? 'Hapus favorit' : 'Favorit';
+    renderDex();
+  });
   $('#detail-rename').addEventListener('click', ()=> renameCat(c));
   $('#detail-delete').addEventListener('click', ()=> deleteCatConfirm(c));
 }
@@ -1275,8 +1334,14 @@ async function deleteCatConfirm(c){
    13b. Jurnal Berburu (linimasa harian otomatis)
    --------------------------------------------------------------------- */
 async function renderJournal(){
-  const cats = await allCats();
   const list = $('#journal-list');
+  list.innerHTML='';
+  for(let i=0;i<3;i++){
+    const sk = el('div',{class:'skel-journal-entry skeleton'});
+    list.appendChild(sk);
+  }
+  await new Promise(r=>setTimeout(r,250));
+  const cats = await allCats();
   $('#journal-count').textContent = `${cats.length} catatan`;
   if(cats.length===0){
     list.innerHTML = `<div class="empty-state">
@@ -1613,13 +1678,19 @@ function renderSkinPicker(container, currentSkin, onSelect){
 $('#stat-row').addEventListener('click', ()=> go('stats'));
 
 async function renderStats(){
+  // skeleton loading
+  const grid = $('#stats-grid'); grid.innerHTML='';
+  for(let i=0;i<6;i++){ grid.appendChild(el('div',{class:'skel-stat-card skeleton'})); }
+  $('#color-bars').innerHTML='<div class="skel-line skeleton"></div><div class="skel-line skeleton"></div><div class="skel-line skeleton"></div>';
+  $('#rarity-bars').innerHTML='<div class="skel-line skeleton"></div><div class="skel-line skeleton"></div>';
+  $('#stats-achievements').innerHTML='<div class="skel-ach-item skeleton"></div><div class="skel-ach-item skeleton"></div>';
+  await new Promise(r=>setTimeout(r,300));
   const cats = await allCats();
   const lvl = levelFromXp(player.xp);
   const xpInLvl = player.xp % CONFIG.XP_PER_LEVEL;
   const xpToNext = CONFIG.XP_PER_LEVEL - xpInLvl;
 
   // grid stats utama
-  const grid = $('#stats-grid');
   grid.innerHTML='';
   const stats = [
     { label:'Level', value:lvl, icon:'<path d="M12 2l2.6 6.1L21 9l-5 4.4L17.4 20 12 16.6 6.6 20 8 13.4 3 9l6.4-.9L12 2z"/>', color:'var(--gold)' },

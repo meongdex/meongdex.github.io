@@ -1073,3 +1073,54 @@ main{flex:1;display:flex;flex-direction:column;position:relative;overflow:hidden
 .dex-empty-search{
   grid-column:1/-1;text-align:center;padding:30px 20px;color:var(--text-mute);font-size:13px;
 }
+
+/* ---------- 45. Skeleton loading ---------- */
+.skeleton{
+  background:linear-gradient(90deg,var(--cream-deep) 25%,var(--paper) 50%,var(--cream-deep) 75%);
+  background-size:200% 100%;animation:shimmerSkel 1.4s ease-in-out infinite;
+  border-radius:8px;
+}
+@keyframes shimmerSkel{0%{background-position:200% 0;}100%{background-position:-200% 0;}}
+.skel-mini-card{
+  background:var(--paper);border-radius:12px;padding:6px;transform:rotate(-2deg);
+  box-shadow:0 6px 10px -4px rgba(0,0,0,.15);position:relative;
+}
+.skel-mini-card:nth-child(2n){transform:rotate(2deg);}
+.skel-mini-card .skel-thumb{height:84px;border-radius:8px;}
+.skel-mini-card .skel-name{height:12px;width:70%;margin:6px auto 0;border-radius:4px;}
+.skel-mini-card .skel-pin{
+  position:absolute;top:-6px;left:50%;transform:translateX(-50%);
+  width:11px;height:11px;border-radius:999px;background:var(--line);
+}
+.skel-stat-card{height:90px;border-radius:var(--radius);}
+.skel-journal-entry{height:68px;border-radius:var(--radius);margin-bottom:8px;}
+.skel-ach-item{height:58px;border-radius:var(--radius);margin-bottom:8px;}
+.skel-line{height:14px;border-radius:4px;margin-bottom:8px;}
+.skel-line.short{width:60%;}
+
+/* ---------- 46. Confetti animation ---------- */
+.confetti-wrap{position:fixed;inset:0;pointer-events:none;z-index:95;overflow:hidden;}
+.confetti-piece{
+  position:absolute;width:10px;height:14px;top:-20px;
+  animation:confettiFall linear forwards;
+}
+@keyframes confettiFall{
+  0%{transform:translateY(0) rotate(0deg);opacity:1;}
+  100%{transform:translateY(105vh) rotate(720deg);opacity:0;}
+}
+
+/* ---------- 47. Favorite toggle ---------- */
+.fav-toggle{
+  position:absolute;top:10px;left:10px;width:34px;height:34px;border-radius:999px;
+  background:rgba(255,253,248,.92);border:1px solid var(--line);display:grid;place-items:center;
+  cursor:pointer;box-shadow:var(--shadow-sm);z-index:4;transition:transform .15s ease;
+}
+.fav-toggle:active{transform:scale(.9);}
+.fav-toggle svg{width:18px;height:18px;color:var(--text-mute);transition:color .2s ease,transform .2s ease;}
+.fav-toggle.active svg{color:var(--terracotta);fill:var(--terracotta);transform:scale(1.1);}
+.fav-badge{
+  position:absolute;top:-4px;right:-4px;width:16px;height:16px;border-radius:999px;
+  background:var(--gold);color:#fff;font-size:9px;font-weight:800;display:none;
+  place-items:center;font-family:'JetBrains Mono',monospace;border:2px solid var(--paper);
+}
+.mini-card.fav .fav-badge{display:grid;}
