@@ -28,6 +28,8 @@ const CONFIG = {
   RARITY_XP: { biasa:0, langka:30, epik:70, legendaris:150 },
   EVENT_XP_MULT: 2,              // multiplier XP saat event aktif
   DECOR_UNLOCK: { carpet:2, toy:3, plant:4, curtain:5, lamp:6 }, // level unlock decor
+  WEEKLY_MISSION_BONUS: 250,     // bonus XP per misi mingguan selesai (lebih besar dari harian)
+  WEEKLY_MISSION_GOAL: 3,        // target default misi mingguan
   // Leaderboard Supabase (Bagian 2.10 addendum) — opsional, graceful fallback.
   // Isi URL + anon key kalau sudah setup proyek Supabase. Kalau kosong, fitur
   // leaderboard tetap muncul tapi menampilkan pesan ramah bahwa fitur belum
@@ -161,6 +163,73 @@ const QUOTES = [
 
 const MOODS = ['Penasaran','Waspada','Terpana','Suka makan','Mendengkur'];
 
+// C2 addendum: Misi mingguan mikro yang berputar.
+// Daftar tetap, dipilih per nomor minggu tahun berjalan (ISO week) modulo panjang daftar.
+// Tiap misi punya: id, label, desc, goal, dan check(state, allCats) -> boolean.
+// state: { fed, catsFoundThisWeek, distinctColorsThisWeek, daysActiveThisWeek }
+// Misi mingguan = bonus XP lebih besar dari misi harian, reset tiap awal minggu.
+const WEEKLY_MISSIONS = [
+  {
+    id: 'white-cat',
+    label: 'Pemburu putih',
+    desc: 'Temukan 1 kucing berwarna putih minggu ini.',
+    goal: 1,
+    check: (s) => s.distinctColorsThisWeek.includes('putih'),
+  },
+  {
+    id: 'three-days',
+    label: 'Konsisten 3 hari',
+    desc: 'Berburu kucing di 3 hari berbeda minggu ini.',
+    goal: 3,
+    check: (s) => s.daysActiveThisWeek >= 3,
+  },
+  {
+    id: 'five-cats',
+    label: 'Lima kucing seminggu',
+    desc: 'Temukan 5 kucing baru minggu ini.',
+    goal: 5,
+    check: (s) => s.catsFoundThisWeek >= 5,
+  },
+  {
+    id: 'feed-ten',
+    label: 'Tukang kasih makan',
+    desc: 'Beri makan 10 kali minggu ini.',
+    goal: 10,
+    check: (s) => s.fedThisWeek >= 10,
+  },
+  {
+    id: 'color-variety',
+    label: 'Variasi warna',
+    desc: 'Temukan kucing dari 3 warna berbeda minggu ini.',
+    goal: 3,
+    check: (s) => s.distinctColorsThisWeek.length >= 3,
+  },
+];
+
+/**
+ * Hitung nomor minggu ISO dari sebuah Date.
+ * Minggu dimulai Senin. Minggu 1 = minggu pertama yang punya hari Kamis.
+ * Dipakai untuk rotasi misi mingguan + reset progres mingguan.
+ */
+function isoWeekNumber(date){
+  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+  const dayNum = (d.getUTCDay() + 6) % 7; // Senin=0 ... Minggu=6
+  d.setUTCDate(d.getUTCDate() - dayNum + 3); // Kamis di minggu yang sama
+  const firstThursday = new Date(Date.UTC(d.getUTCFullYear(), 0, 4));
+  return 1 + Math.round(((d - firstThursday) / 86400000 - 3 + ((firstThursday.getUTCDay() + 6) % 7)) / 7);
+}
+
+/**
+ * Tanggal Senin di awal minggu ISO dari sebuah Date (local time).
+ */
+function startOfWeek(date){
+  const d = new Date(date);
+  const dayNum = (d.getDay() + 6) % 7; // Senin=0
+  d.setDate(d.getDate() - dayNum);
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+
 /* ---------------------------------------------------------------------
    1. State pemain (localStorage)
    --------------------------------------------------------------------- */
@@ -189,6 +258,11 @@ const Store = {
       questCompletedSeen:false, // flag quest tracker sudah selesai & dilihat
       favorites:[],       // id kucing favorit
       completedHonor:[],  // id tantangan foto kreatif honor-system yang sudah diselesaikan (Bagian 2.5)
+      // C2 addendum: misi mingguan
+      weeklyMissionId:'',     // id misi mingguan aktif (rotasi per ISO week)
+      weeklyMissionWeek:-1,   // nomor minggu ISO saat misi ini dipilih (untuk reset otomatis)
+      weeklyMissionDone:false,// flag sudah selesai minggu ini
+      weeklyMissionYear:-1,   // tahun saat misi ini dipilih (anti confused di tahun baru)
     };
   },
   load(){
@@ -413,10 +487,93 @@ function renderHome(){
   renderEventBanner();
   // tantangan
   renderChallengesCard();
+  // misi mingguan (C2 addendum)
+  renderWeeklyMission(cats);
   // ringkasan mingguan (Bagian 3.8 addendum)
   renderWeekSummary(cats);
   // kucing hari ini
   renderCotd(cats);
+}
+
+/**
+ * C2 addendum: render kartu misi mingguan di Beranda.
+ * Misi dipilih per nomor minggu ISO (Senin-Kamis-Jumat-Minggu cycle).
+ * Reset otomatis di awal minggu baru. Bonus XP besar (WEEKLY_MISSION_BONUS).
+ */
+function renderWeeklyMission(cats){
+  const wrap = $('#home-weekly-mission');
+  if(!wrap) return;
+  const now = new Date();
+  const wk = isoWeekNumber(now);
+  const yr = now.getFullYear();
+  // reset kalau masuk minggu baru
+  if(player.weeklyMissionWeek !== wk || player.weeklyMissionYear !== yr){
+    player.weeklyMissionWeek = wk;
+    player.weeklyMissionYear = yr;
+    player.weeklyMissionDone = false;
+    // pilih misi berdasarkan (year*53 + week) modulo panjang daftar
+    // supaya tiap minggu dapet misi berbeda tapi deterministik
+    const idx = ((yr * 53 + wk) % WEEKLY_MISSIONS.length + WEEKLY_MISSIONS.length) % WEEKLY_MISSIONS.length;
+    const mission = WEEKLY_MISSIONS[idx];
+    player.weeklyMissionId = mission.id;
+    Store.save(player);
+  }
+  const mission = WEEKLY_MISSIONS.find(m=>m.id===player.weeklyMissionId) || WEEKLY_MISSIONS[0];
+  // hitung progres dari data aktual minggu ini
+  const state = computeWeeklyState(cats);
+  const progress = computeWeeklyMissionProgress(mission, state);
+  $('#weekly-mission-title').textContent = mission.label;
+  $('#weekly-mission-desc').textContent = mission.desc;
+  $('#weekly-mission-count').textContent = `${Math.min(progress, mission.goal)} / ${mission.goal}`;
+  $('#weekly-mission-bar').style.width = Math.min(100, (progress / mission.goal) * 100) + '%';
+  // tampilkan badge "selesai" kalau done
+  wrap.classList.toggle('done', player.weeklyMissionDone);
+}
+
+/**
+ * Hitung state aktivitas pemain minggu ini dari data aktual.
+ * Dipakai untuk cek completion misi mingguan + render progres.
+ */
+function computeWeeklyState(cats){
+  const weekStart = startOfWeek(new Date());
+  const weekStartMs = weekStart.getTime();
+  const nowMs = Date.now();
+  // kucing yang ditemukan minggu ini (date dalam range [weekStart, now])
+  const weekCats = (cats || []).filter(c=>{
+    const t = new Date(c.date).getTime();
+    return !isNaN(t) && t >= weekStartMs && t <= nowMs;
+  });
+  // warna berbeda yang ditemukan minggu ini
+  const distinctColors = Array.from(new Set(weekCats.map(c=>c.color))).filter(Boolean);
+  // hari berbeda aktif minggu ini (dari tanggal date kucing)
+  const distinctDays = new Set(weekCats.map(c=>{
+    const d = new Date(c.date);
+    return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+  }));
+  // fedThisWeek: tidak disimpan per-event, jadi estimasi dari jumlah kucing minggu ini
+  // (asumsi: tiap kucing = 1x kasih makan). Kalau mau akurat, perlu log event terpisah.
+  return {
+    catsFoundThisWeek: weekCats.length,
+    distinctColorsThisWeek: distinctColors,
+    daysActiveThisWeek: distinctDays.size,
+    fedThisWeek: weekCats.length, // estimasi
+  };
+}
+
+/**
+ * Hitung progres numerik misi mingguan dari state.
+ * Return angka (bisa lebih dari goal kalau overshoot).
+ */
+function computeWeeklyMissionProgress(mission, state){
+  if(!mission || !state) return 0;
+  switch(mission.id){
+    case 'white-cat': return state.distinctColorsThisWeek.includes('putih') ? 1 : 0;
+    case 'three-days': return state.daysActiveThisWeek;
+    case 'five-cats': return state.catsFoundThisWeek;
+    case 'feed-ten': return state.fedThisWeek;
+    case 'color-variety': return state.distinctColorsThisWeek.length;
+    default: return 0;
+  }
 }
 
 /**
@@ -1409,6 +1566,23 @@ async function saveCat(){
     } else if(player.missionDate!==today){
       player.missionDate = today; player.missionCount=1; player.missionDone=false;
     }
+
+    // --- Misi mingguan (C2 addendum) ---
+    // Cek completion: kalau belum done dan check(state) true, beri bonus XP.
+    let weeklyMissionJustCompleted = false;
+    if(!player.weeklyMissionDone && player.weeklyMissionId){
+      const mission = WEEKLY_MISSIONS.find(m=>m.id===player.weeklyMissionId);
+      if(mission){
+        const state = computeWeeklyState(currentCatsCache);
+        if(mission.check(state)){
+          player.weeklyMissionDone = true;
+          player.xp += CONFIG.WEEKLY_MISSION_BONUS;
+          gain += CONFIG.WEEKLY_MISSION_BONUS;
+          weeklyMissionJustCompleted = true;
+        }
+      }
+    }
+
     Store.save(player);
     const newLevel = levelFromXp(player.xp);
 
@@ -1436,6 +1610,10 @@ async function saveCat(){
       const offset = 1100 + newlyCompleted.length*900 + i*900;
       setTimeout(()=> toast(`Tantangan foto: ${h.label} (+${CONFIG.CHALLENGE_BONUS} XP)`, 'gold', ICONS.star), offset);
     });
+    if(weeklyMissionJustCompleted){
+      const offset = 1100 + (newlyCompleted.length + newlyHonor.length) * 900;
+      setTimeout(()=> toast(`Misi minggu ini selesai: +${CONFIG.WEEKLY_MISSION_BONUS} XP`, 'gold', ICONS.star), offset);
+    }
     // level up?
     if(newLevel > oldLevel){
       setTimeout(()=> showLevelUp(newLevel), 800);
