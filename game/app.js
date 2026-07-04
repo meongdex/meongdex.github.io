@@ -49,8 +49,8 @@ const CONFIG = {
   // Google: sync full (foto + metadata) via Google Drive appDataFolder.
   // Facebook: sync metadata only via Supabase Auth (foto tetap lokal).
   AUTH: {
-    GOOGLE_CLIENT_ID: '',              // dari Google Cloud Console (OAuth 2.0 Client ID)
-    FACEBOOK_APP_ID: '',               // dari Facebook App Dashboard
+    GOOGLE_CLIENT_ID: '1001148832154-8rnklu10manudo2uuujucrt6tfbvdnpl.apps.googleusercontent.com',
+    FACEBOOK_APP_ID: '',               // dari Facebook App Dashboard (masih on-progress)
     // Supabase Auth untuk Facebook login (reuse LEADERBOARD config).
     // Pastikan Facebook provider enabled di Supabase Dashboard > Auth > Providers.
     DRIVE_FILE_NAME: 'meongdex-backup.json',
