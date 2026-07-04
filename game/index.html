@@ -85,6 +85,18 @@
         </div>
       </div>
 
+      <!-- event musiman -->
+      <div class="home-card event hide" id="home-event">
+        <div class="event-icon" id="event-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l2.6 6.1L21 9l-5 4.4L17.4 20 12 16.6 6.6 20 8 13.4 3 9l6.4-.9L12 2z"/></svg>
+        </div>
+        <div class="event-tx">
+          <div class="event-label" id="event-label">Event</div>
+          <div class="event-desc" id="event-desc">—</div>
+        </div>
+        <span class="event-mult">x2 XP</span>
+      </div>
+
       <!-- sesi berburu aktif (muncul kalau ada) -->
       <div class="home-card session hide" id="home-session">
         <div class="label" style="color:var(--teal-deep);">Sesi berburu aktif</div>
@@ -216,6 +228,11 @@
         </svg>
       </div>
       <p class="feed-hint" id="feed-hint">Pilih makanan, lalu tahan tombol untuk mengisi daya lemparan.</p>
+      <div class="feed-session hide" id="feed-session">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+        <div class="fs-tx"><b id="feed-session-count">1</b> kucing dalam sesi · <span class="mono" id="feed-session-time">29:59</span></div>
+        <span class="fs-bonus" id="feed-session-bonus">+15 XP berikutnya</span>
+      </div>
       <div class="food-picker" id="feed-foods" role="radiogroup" aria-label="Pilih makanan"></div>
       <div class="meter"><i id="feed-meter"></i><span class="mark"></span></div>
       <div class="feed-controls">
@@ -407,8 +424,9 @@
         <div class="tx">Pilih kucing favoritmu untuk menghuni rumah ini. Ruang ini jadi tempat istirahat koleksimu.</div>
       </div>
       <div class="shelter-room" id="shelter-room"></div>
+      <div class="shelter-decor-status mono" id="shelter-decor-status">0 / 0 dekorasi dipasang</div>
       <div class="shelter-actions">
-        <button class="btn secondary block" id="shelter-edit">Atur penghuni</button>
+        <button class="btn secondary block" id="shelter-edit">Atur penghuni &amp; dekorasi</button>
       </div>
     </section>
 

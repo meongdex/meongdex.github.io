@@ -26,6 +26,8 @@ const CONFIG = {
   CHALLENGE_BONUS: 80,           // XP per tantangan selesai
   SHELTER_SLOTS: 6,              // jumlah slot rumah kucing
   RARITY_XP: { biasa:0, langka:30, epik:70, legendaris:150 },
+  EVENT_XP_MULT: 2,              // multiplier XP saat event aktif
+  DECOR_UNLOCK: { carpet:2, toy:3, plant:4, curtain:5, lamp:6 }, // level unlock decor
 };
 
 // Tingkat kelangkaan lengkap (Fase 3): biasa < langka < epik < legendaris
@@ -43,6 +45,30 @@ const CARD_SKINS = [
   { id:'rose',    label:'Rose',   color:'#e8a4b8' },
   { id:'night',   label:'Night',  color:'#4a4868' },
 ];
+
+// Dekorasi rumah (Fase 3): item unlock by level
+const DECOR_ITEMS = [
+  { id:'carpet',  label:'Karpet',     unlockLevel:2, svg:'<rect x="3" y="14" width="18" height="6" rx="1" fill="#E8804C" opacity=".4"/><path d="M3 14l18 6" stroke="#C9652F" stroke-width="1"/>' },
+  { id:'toy',     label:'Mainan',     unlockLevel:3, svg:'<circle cx="8" cy="14" r="3" fill="#4A9B8E"/><path d="M8 11v-3M5 14h6" stroke="#357569" stroke-width="1.5"/>' },
+  { id:'plant',   label:'Tanaman',    unlockLevel:4, svg:'<path d="M12 20v-6M12 14c-3 0-5-2-5-5 3 0 5 2 5 5zM12 14c3 0 5-2 5-5-3 0-5 2-5 5z" fill="#4A9B8E"/>' },
+  { id:'curtain', label:'Gorden',     unlockLevel:5, svg:'<path d="M4 4v16M20 4v16M4 4h16" stroke="#C9652F" stroke-width="1.5"/><path d="M4 4l2 16M8 4l2 16M12 4l2 16M16 4l2 16M20 4l2 16" stroke="#E8804C" stroke-width=".8" opacity=".6"/>' },
+  { id:'lamp',    label:'Lampu',      unlockLevel:6, svg:'<path d="M9 4h6l2 6H7z" fill="#D4AF37"/><path d="M12 10v8M9 18h6" stroke="#3A2E2A" stroke-width="1.5"/>' },
+];
+
+// Event musiman (Fase 3): cek tanggal untuk event aktif
+function getCurrentEvent(){
+  const now = new Date();
+  const m = now.getMonth()+1; // 1-12
+  const d = now.getDate();
+  // Event: Minggu Kucing Oren (setiap bulan, tanggal 1-7)
+  if(d <= 7) return { id:'orange-week', label:'Minggu Kucing Oren', desc:'Bonus XP ganda untuk kucing berwarna oren!', mult:2, color:'#E8804C', filter:c=>c.color==='oren' };
+  // Event: Akhir Pekan Kucing Hitam (Jumat-Sabtu)
+  const day = now.getDay(); // 0=Min, 5=Jum, 6=Sab
+  if(day===5 || day===6) return { id:'black-weekend', label:'Akhir Pekan Kucing Hitam', desc:'Bonus XP ganda untuk kucing hitam!', mult:2, color:'#3A2E2A', filter:c=>c.color==='hitam' };
+  // Event: Musim Calico (Mei & November)
+  if(m===5 || m===11) return { id:'calico-season', label:'Musim Calico', desc:'Calico lebih sering muncul bulan ini!', mult:1.5, color:'#D4AF37', filter:c=>c.color==='calico' };
+  return null;
+}
 
 const COLORS = [
   { id:'oren',  label:'Oren',  hex:'#E8804C' },
@@ -114,6 +140,8 @@ const Store = {
       soundEnabled:true,
       shelterCatIds:[],  // id kucing yang menghuni rumah
       cardSkin:'default', // tema kartu kosmetik aktif
+      activeDecor:[],     // id decor yang aktif di rumah
+      lastEventSeen:'',   // id event terakhir yang dilihat (untuk notifikasi sekali)
     };
   },
   load(){
@@ -317,10 +345,30 @@ function renderHome(){
   $('#mission-bar').style.width = Math.min(100, (player.missionCount/CONFIG.MISSION_GOAL)*100) + '%';
   // sesi berburu
   renderSession();
+  // event musiman
+  renderEventBanner();
   // tantangan
   renderChallengesCard();
   // kucing hari ini
   renderCotd(cats);
+}
+
+function renderEventBanner(){
+  const wrap = $('#home-event');
+  if(!wrap) return;
+  const ev = getCurrentEvent();
+  if(!ev){ wrap.classList.add('hide'); return; }
+  wrap.classList.remove('hide');
+  $('#event-label').textContent = ev.label;
+  $('#event-desc').textContent = ev.desc;
+  wrap.style.borderColor = ev.color+'55';
+  wrap.style.background = `linear-gradient(135deg,${ev.color}1a,${ev.color}08)`;
+  $('#event-icon').style.color = ev.color;
+  // notifikasi sekali per event
+  if(player.lastEventSeen !== ev.id){
+    player.lastEventSeen = ev.id; Store.save(player);
+    setTimeout(()=> toast(`Event aktif: ${ev.label}`,'gold',ICONS.star), 1200);
+  }
 }
 
 function renderSession(){
@@ -430,12 +478,29 @@ function initFeed(){
   feedCharge = 0; feeding = false;
   $('#feed-meter').style.width = '0%';
   $('#feed-mood').textContent = MOODS[0];
-  $('#feed-cat').classList.remove('happy','eating');
+  $('#feed-cat').classList.remove('happy','eating','mood-happy','mood-love','mood-excited');
   $('#feed-hint').textContent = 'Pilih makanan, lalu tahan tombol untuk mengisi daya lemparan.';
   $('#btn-throw').textContent = '';
   $('#btn-throw').insertAdjacentHTML('afterbegin',
     '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><path d="M12 3.5c-1.6 2-1.6 15 0 17M12 3.5c1.6 2 1.6 15 0 17M4.5 9h15M4.5 15h15"/></svg> Tahan untuk isi daya');
   renderFoodPicker();
+  renderFeedSession();
+}
+
+function renderFeedSession(){
+  const wrap = $('#feed-session');
+  if(!wrap) return;
+  const now = Date.now();
+  const active = player.sessionStart && (now - player.sessionStart) < CONFIG.SESSION_WINDOW_MS && player.sessionCatCount >= 1;
+  if(!active){ wrap.classList.add('hide'); return; }
+  wrap.classList.remove('hide');
+  const remaining = Math.max(0, CONFIG.SESSION_WINDOW_MS - (now - player.sessionStart));
+  const mins = Math.floor(remaining/60000);
+  const secs = Math.floor((remaining%60000)/1000);
+  $('#feed-session-count').textContent = player.sessionCatCount;
+  $('#feed-session-time').textContent = `${mins}:${String(secs).padStart(2,'0')}`;
+  const next = Math.min(CONFIG.SESSION_BONUS_CAP, player.sessionCatCount * CONFIG.SESSION_BONUS_PER_CAT);
+  $('#feed-session-bonus').textContent = `+${next} XP berikutnya`;
 }
 
 let selectedFood = 'snack';
@@ -836,7 +901,7 @@ async function saveCat(){
   if(!pendingCat) return;
   const btn = $('#btn-save-card'); btn.disabled = true;
   try{
-    // terapkan warna &amp; rarity final (rarity sudah ditentukan di buildNewCard)
+    // terapkan warna final (pakai selectedColor terbaru dari color picker di card screen)
     pendingCat.color = selectedColor;
     // calico minimal langka
     if(selectedColor==='calico' && pendingCat.rarity==='biasa') pendingCat.rarity='langka';
@@ -855,6 +920,13 @@ async function saveCat(){
     // bonus makanan
     const food = FOODS.find(f=>f.id===pendingCat.foodUsed);
     if(food && food.xpBonus){ gain += food.xpBonus; }
+    // event musiman multiplier
+    const ev = getCurrentEvent();
+    let eventBonus = 0;
+    if(ev && ev.filter && ev.filter(pendingCat)){
+      eventBonus = Math.round(gain * (ev.mult - 1));
+      gain += eventBonus;
+    }
     player.xp += gain;
     player.fed += 1;
 
@@ -922,8 +994,11 @@ async function saveCat(){
     btn.disabled = false;
     toast(`Nomor ${savedCat.id} terdaftar di Meongdex-mu!`, savedCat.rarity==='langka'?'gold':'success', ICONS.star);
     playChime();
+    if(eventBonus > 0 && ev){
+      setTimeout(()=> toast(`Bonus event ${ev.label}: +${eventBonus} XP`, 'gold', ICONS.star), 500);
+    }
     if(sessionBonus > 0){
-      setTimeout(()=> toast(`Bonus sesi berburu: +${sessionBonus} XP (${sessionCount} kucing)`, 'success', ICONS.paw), 700);
+      setTimeout(()=> toast(`Bonus sesi berburu: +${sessionBonus} XP (${sessionCount} kucing)`, 'success', ICONS.paw), 900);
     }
     newlyCompleted.forEach((ch, i)=>{
       setTimeout(()=> toast(`Tantangan selesai: ${ch.label} (+${CONFIG.CHALLENGE_BONUS} XP)`, 'gold', ICONS.star), 1100 + i*900);
@@ -1332,6 +1407,22 @@ async function renderShelter(){
   $('#shelter-count').textContent = `${shelterCats.length} / ${CONFIG.SHELTER_SLOTS}`;
   const room = $('#shelter-room');
   room.innerHTML='';
+  // dekorasi aktif (render sebagai overlay di room)
+  const activeDecor = player.activeDecor || [];
+  const lvl = levelFromXp(player.xp);
+  // decor layer
+  if(activeDecor.length>0){
+    const decorLayer = el('div',{class:'shelter-decor-layer'});
+    activeDecor.forEach(did=>{
+      const item = DECOR_ITEMS.find(x=>x.id===did);
+      if(item){
+        const node = el('div',{class:`decor-item decor-${did}`});
+        node.innerHTML = `<svg viewBox="0 0 24 24">${item.svg}</svg>`;
+        decorLayer.appendChild(node);
+      }
+    });
+    room.appendChild(decorLayer);
+  }
   for(let i=0;i<CONFIG.SHELTER_SLOTS;i++){
     const c = shelterCats[i];
     const slot = el('div',{class:'shelter-slot '+(c?`occupied ${c.rarity}`:'empty')});
@@ -1345,6 +1436,12 @@ async function renderShelter(){
       slot.appendChild(el('div',{class:'cat-bed'}));
     }
     room.appendChild(slot);
+  }
+  // decor status di bawah room
+  const decorStatus = $('#shelter-decor-status');
+  if(decorStatus){
+    const unlocked = DECOR_ITEMS.filter(d=> lvl >= d.unlockLevel);
+    decorStatus.textContent = `${activeDecor.length} / ${unlocked.length} dekorasi dipasang · Lv ${lvl}`;
   }
 }
 
@@ -1369,9 +1466,25 @@ async function openShelterEdit(){
       <div class="check"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg></div>
     </div>`;
   });
+  html += `</div>`;
+  // dekorasi section
+  const lvl = levelFromXp(player.xp);
+  const activeDecor = player.activeDecor || [];
+  html += `<h4 class="decor-title"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#D4AF37" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l2.6 6.1L21 9l-5 4.4L17.4 20 12 16.6 6.6 20 8 13.4 3 9l6.4-.9L12 2z"/></svg> Dekorasi rumah</h4>
+  <p class="decor-note">Pasang item dekorasi. Beberapa terkunci sampai level tertentu.</p>
+  <div class="decor-grid">`;
+  DECOR_ITEMS.forEach(d=>{
+    const unlocked = lvl >= d.unlockLevel;
+    const isActive = activeDecor.includes(d.id);
+    html += `<div class="decor-card${isActive?' active':''}${unlocked?'':' locked'}" data-decor="${d.id}">
+      <div class="decor-ico"><svg viewBox="0 0 24 24">${d.svg}</svg></div>
+      <div class="decor-nm">${d.label}</div>
+      ${unlocked ? `<div class="decor-st">${isActive?'Terpasang':'Tap untuk pasang'}</div>` : `<div class="decor-lk">Lv ${d.unlockLevel}</div><div class="lock-ovl"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg></div>`}
+    </div>`;
+  });
   html += `</div>
   <div class="row gap-8 mt-12">
-    <button class="btn secondary block" id="shelter-clear">Kosongkan</button>
+    <button class="btn secondary block" id="shelter-clear">Kosongkan kucing</button>
     <button class="btn block" id="shelter-save">Simpan</button>
   </div>`;
   content.innerHTML = html;
@@ -1396,8 +1509,20 @@ async function openShelterEdit(){
     picked = [];
     $$('.shelter-pick').forEach(n=> n.classList.remove('active'));
   });
+  // decor toggle
+  let pickedDecor = [...(player.activeDecor || [])];
+  $$('.decor-card').forEach(node=>{
+    if(node.classList.contains('locked')) return;
+    node.addEventListener('click', ()=>{
+      const id = node.dataset.decor;
+      const idx = pickedDecor.indexOf(id);
+      if(idx>=0){ pickedDecor.splice(idx,1); node.classList.remove('active'); node.querySelector('.decor-st').textContent='Tap untuk pasang'; }
+      else { pickedDecor.push(id); node.classList.add('active'); node.querySelector('.decor-st').textContent='Terpasang'; }
+    });
+  });
   $('#shelter-save').addEventListener('click', ()=>{
     player.shelterCatIds = picked;
+    player.activeDecor = pickedDecor;
     Store.save(player);
     closeSheet();
     renderShelter();
