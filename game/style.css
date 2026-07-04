@@ -1379,3 +1379,14 @@ main{flex:1;display:flex;flex-direction:column;position:relative;overflow:hidden
 .lb-meta{font-size:10px;color:var(--text-mute,#8a7566);grid-column:2/4;}
 .lb-submit{padding-top:14px;border-top:1px solid var(--line,#E4D5BE);}
 .lb-label{font-size:10px;font-family:'JetBrains Mono',monospace;color:var(--teal-deep,#357569);letter-spacing:.1em;font-weight:700;}
+
+/* C7 addendum: banner agregat komunitas di sheet leaderboard */
+.lb-aggregate{
+  display:flex;align-items:stretch;gap:0;margin-bottom:14px;
+  background:linear-gradient(135deg,rgba(232,128,76,.12),rgba(74,155,142,.08));
+  border:1px solid rgba(232,128,76,.3);border-radius:14px;padding:14px 16px;
+}
+.lb-agg-row{flex:1;display:flex;flex-direction:column;align-items:center;text-align:center;gap:4px;}
+.lb-agg-num{font-size:24px;font-weight:700;color:var(--terracotta-deep,#C9652F);font-family:'Fredoka',sans-serif;line-height:1.1;}
+.lb-agg-lbl{font-size:10px;color:var(--text-soft,#5C4B44);line-height:1.3;font-family:'Plus Jakarta Sans',sans-serif;}
+.lb-agg-divider{width:1px;background:rgba(58,46,42,.15);margin:0 4px;}

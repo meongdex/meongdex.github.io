@@ -3195,6 +3195,38 @@ const Leaderboard = {
       return [];
     }
   },
+  /**
+   * C7 addendum: Ambil agregat komunitas — total kucing yang sudah ditemukan
+   * seluruh pemain Meongdex. Pakai PostgREST RPC endpoint atau select dengan
+   * aggregate header. PostgREST standar tidak support SUM langsung lewat GET
+   * tanpa function, jadi kita ambil semua baris dan jumlahkan di client
+   * (cukup ringan karena tabel leaderboard tidak akan besar di proyek kecil).
+   * Return { totalCats, totalPlayers, totalXp } atau null kalau gagal.
+   */
+  async fetchAggregate(){
+    if(!this.isConfigured()) return null;
+    const c = CONFIG.LEADERBOARD;
+    // ambil semua baris (tanpa limit, tapi PostgREST default limit 1000 — cukup)
+    const url = this._url(`/rest/v1/${c.TABLE_NAME}?select=cat_count,xp`);
+    try{
+      const res = await this._fetchWithTimeout(url, { headers: this._headers() });
+      if(!res.ok) return null;
+      const data = await res.json();
+      if(!Array.isArray(data)) return null;
+      let totalCats = 0, totalXp = 0;
+      data.forEach(r=>{
+        totalCats += (r.cat_count || 0);
+        totalXp += (r.xp || 0);
+      });
+      return {
+        totalCats,
+        totalPlayers: data.length,
+        totalXp,
+      };
+    }catch(e){
+      return null;
+    }
+  },
   /** Submit skor pemain. Return true kalau sukses, false kalau gagal. */
   async submitScore(nick, xp, catCount){
     if(!this.isConfigured()) return false;
@@ -3246,7 +3278,8 @@ $('#set-leaderboard').addEventListener('click', async ()=>{
     return;
   }
 
-  const top = await Leaderboard.fetchTop();
+  // C7 addendum: ambil agregat komunitas paralel dengan top list
+  const [top, agg] = await Promise.all([Leaderboard.fetchTop(), Leaderboard.fetchAggregate()]);
   if(top.length === 0){
     body.innerHTML = `
       <div class="lb-empty">
@@ -3257,6 +3290,26 @@ $('#set-leaderboard').addEventListener('click', async ()=>{
         <p class="muted" style="font-size:11px;margin-top:6px;">Fitur inti game (temukan, kasih makan, foto, koleksi) tetap berjalan penuh tanpa papan peringkat.</p>
       </div>`;
     return;
+  }
+
+  // C7 addendum: banner agregat komunitas — total kucing & total pemain
+  // Menghubungkan kembali ke semangat "Bantu Kucing Sungguhan" (3.1 addendum).
+  // Kalau agregat gagal fetch (network/pause), banner di-skip diam-diam.
+  let aggBanner = '';
+  if(agg && agg.totalCats > 0){
+    const fmtNum = n => n.toLocaleString('id-ID');
+    aggBanner = `
+      <div class="lb-aggregate">
+        <div class="lb-agg-row">
+          <div class="lb-agg-num">${fmtNum(agg.totalCats)}</div>
+          <div class="lb-agg-lbl">kucing telah ditemukan<br>seluruh pemain Meongdex</div>
+        </div>
+        <div class="lb-agg-divider"></div>
+        <div class="lb-agg-row">
+          <div class="lb-agg-num">${fmtNum(agg.totalPlayers)}</div>
+          <div class="lb-agg-lbl">pemburu aktif<br>di komunitas</div>
+        </div>
+      </div>`;
   }
 
   const rows = top.map((r, i)=>{
@@ -3278,6 +3331,7 @@ $('#set-leaderboard').addEventListener('click', async ()=>{
   // nama panggilan tersimpan di localStorage (anonim, tanpa akun/login)
   const savedNick = (localStorage.getItem(CONFIG.LEADERBOARD.NICKNAME_KEY) || '').slice(0, 24);
   body.innerHTML = `
+    ${aggBanner}
     <div class="lb-list">${rows}</div>
     <div class="lb-submit mt-16">
       <div class="lb-label">KIRIM SKOR KAMU</div>
