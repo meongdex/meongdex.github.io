@@ -35,6 +35,70 @@
 
   <main id="main">
 
+    <!-- ================= PILIH CARA SIMPAN (akun/sync) ================= -->
+    <section class="screen storage-choice" data-screen="storage-choice" id="screen-storage-choice">
+      <div class="storage-choice-wrap">
+        <div class="storage-choice-mascot" aria-hidden="true">
+          <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+            <ellipse cx="100" cy="158" rx="58" ry="14" fill="rgba(58,46,42,0.10)"/>
+            <path d="M55 70 L38 28 L78 56 Z" fill="#E8804C"/>
+            <path d="M145 70 L162 28 L122 56 Z" fill="#E8804C"/>
+            <ellipse cx="100" cy="115" rx="62" ry="55" fill="#E8804C"/>
+            <ellipse cx="100" cy="128" rx="30" ry="24" fill="#FFF8ED"/>
+            <g class="mascot-eye" data-mascot-eye="left" style="transform-origin:82px 108px;">
+              <circle cx="82" cy="108" r="7.5" fill="#3A2E2A"/>
+              <circle cx="84.5" cy="105" r="2.4" fill="#ffffff"/>
+            </g>
+            <g class="mascot-eye" data-mascot-eye="right" style="transform-origin:118px 108px;">
+              <circle cx="118" cy="108" r="7.5" fill="#3A2E2A"/>
+              <circle cx="120.5" cy="105" r="2.4" fill="#ffffff"/>
+            </g>
+            <path d="M96 120 q4 4 4 4 q0 0 4 -4" stroke="#3A2E2A" stroke-width="3" fill="none" stroke-linecap="round"/>
+            <path d="M94 124 q6 6 12 0" stroke="#3A2E2A" stroke-width="3" fill="none" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <h2>Pilih cara menyimpan progresmu</h2>
+        <p class="storage-choice-intro">Meongdex bisa dimainkan tanpa akun, tapi kalau mau sync otomatis antar device, pilih salah satu di bawah. Bisa diubah kapan saja di Pengaturan.</p>
+
+        <div class="storage-options">
+          <button class="storage-opt" data-provider="none">
+            <div class="so-ico so-ico-none">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            </div>
+            <div class="so-tx">
+              <div class="so-title">Main tanpa akun</div>
+              <div class="so-desc">Data tersimpan lokal di HP. Pindah device pakai import/export file JSON manual.</div>
+              <div class="so-tag">Paling privat</div>
+            </div>
+          </button>
+
+          <button class="storage-opt" data-provider="google">
+            <div class="so-ico so-ico-google">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+            </div>
+            <div class="so-tx">
+              <div class="so-title">Login Google</div>
+              <div class="so-desc">Sync otomatis penuh (foto + progres) via Google Drive kamu sendiri. Data tetap milikmu di Drive.</div>
+              <div class="so-tag">Sync penuh + foto</div>
+            </div>
+          </button>
+
+          <button class="storage-opt" data-provider="facebook">
+            <div class="so-ico so-ico-facebook">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>
+            </div>
+            <div class="so-tx">
+              <div class="so-title">Login Facebook</div>
+              <div class="so-desc">Sync progres (XP, level, koleksi) via server. Foto tetap lokal per device.</div>
+              <div class="so-tag">Sync metadata</div>
+            </div>
+          </button>
+        </div>
+
+        <div class="storage-choice-note" id="storage-choice-note"></div>
+      </div>
+    </section>
+
     <!-- ================= ONBOARDING ================= -->
     <section class="screen onboard active" data-screen="onboarding" id="screen-onboarding">
       <div class="onboard-mascot" id="onboard-mascot">
@@ -535,6 +599,11 @@
         <button class="set-item" id="set-guide">
           <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg></span>
           <div class="tx"><div class="t">Panduan Lengkap</div><div class="d">Mekanik lanjutan: bond, rarity, misi, dsb.</div></div>
+          <span class="arrow"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span>
+        </button>
+        <button class="set-item" id="set-account">
+          <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></span>
+          <div class="tx"><div class="t">Akun &amp; Sync</div><div class="d" id="account-status">Main tanpa akun</div></div>
           <span class="arrow"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span>
         </button>
         <button class="set-item" id="set-install">

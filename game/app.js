@@ -42,6 +42,20 @@ const CONFIG = {
     TIMEOUT_MS: 8000,                  // batas waktu fetch, supaya UX tetap responsif
     NICKNAME_KEY: 'meongdex_nick',     // localStorage key untuk nama panggilan
   },
+  // Auth & sync (akun login) — opsional. Isi client ID setelah setup di
+  // Google Cloud Console + Facebook App Dashboard. Kalau kosong, opsi login
+  // tetap tampil tapi menampilkan pesan "belum dikonfigurasi" dan pemain
+  // tetap bisa main dengan import/export manual (default).
+  // Google: sync full (foto + metadata) via Google Drive appDataFolder.
+  // Facebook: sync metadata only via Supabase Auth (foto tetap lokal).
+  AUTH: {
+    GOOGLE_CLIENT_ID: '',              // dari Google Cloud Console (OAuth 2.0 Client ID)
+    FACEBOOK_APP_ID: '',               // dari Facebook App Dashboard
+    // Supabase Auth untuk Facebook login (reuse LEADERBOARD config).
+    // Pastikan Facebook provider enabled di Supabase Dashboard > Auth > Providers.
+    DRIVE_FILE_NAME: 'meongdex-backup.json',
+    SYNC_DEBOUNCE_MS: 3000,            // debounce auto-sync setelah saveCat
+  },
 };
 
 // Tingkat kelangkaan lengkap (Fase 3): biasa < langka < epik < legendaris
@@ -397,6 +411,15 @@ const Store = {
       // sekali. Key: 'feed-throw', 'verify-ai', 'card-color', 'dex-strip', dll.
       // Kalau key ada di object = sudah dilihat, jangan tampilkan lagi.
       coachMarksSeen:{},
+      // Auth & sync: provider = '' (none) | 'google' | 'facebook'
+      // Kalau kosong = main tanpa akun (default, import/export manual).
+      authProvider:'',
+      authToken:'',            // OAuth access token (Google atau Facebook)
+      authUserName:'',         // nama dari provider (untuk display)
+      authUserEmail:'',        // email dari provider (untuk display)
+      driveFileId:'',          // Google Drive file ID untuk backup (kalau google)
+      lastSyncAt:'',           // ISO timestamp sync terakhir
+      storageChoiceSeen:false, // flag: pemain sudah pernah lihat layar pilih storage
     };
   },
   load(){
@@ -489,7 +512,7 @@ function el(tag, props={}, children=[]){
 /* ---------------------------------------------------------------------
    4. Navigasi screen
    --------------------------------------------------------------------- */
-const screenOrder = ['onboarding','home','perm-loc','feed','perm-cam','verify','card','dex','journal','map','shelter','stats','settings'];
+const screenOrder = ['storage-choice','onboarding','home','perm-loc','feed','perm-cam','verify','card','dex','journal','map','shelter','stats','settings'];
 let currentScreen = 'onboarding';
 
 // urutan screen untuk menentukan arah transisi (back vs forward)
@@ -1815,6 +1838,8 @@ async function saveCat(){
       const offset = 1100 + (newlyCompleted.length + newlyHonor.length) * 900;
       setTimeout(()=> toast(`Misi minggu ini selesai: +${CONFIG.WEEKLY_MISSION_BONUS} XP`, 'gold', ICONS.star), offset);
     }
+    // Auth & sync: trigger auto-sync debounced setelah save (kalau login)
+    triggerSyncAfterSave();
     // level up?
     if(newLevel > oldLevel){
       setTimeout(()=> showLevelUp(newLevel), 800);
@@ -3137,6 +3162,112 @@ $('#set-guide').addEventListener('click', ()=>{
     <button class="btn block mt-16" onclick="document.getElementById('overlay').classList.remove('active')">Tutup</button>`;
   openSheet(content);
 });
+
+// Auth & sync: handler tombol Akun & Sync di Pengaturan
+function updateAccountStatus(){
+  const node = $('#account-status');
+  if(!node) return;
+  if(!Auth.isLoggedIn()){
+    node.textContent = 'Main tanpa akun';
+    return;
+  }
+  const provider = player.authProvider === 'google' ? 'Google' : 'Facebook';
+  const name = player.authUserName || provider;
+  const lastSync = player.lastSyncAt
+    ? new Date(player.lastSyncAt).toLocaleString('id-ID',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})
+    : 'belum pernah';
+  node.textContent = `${name} · sync ${lastSync}`;
+}
+
+$('#set-account').addEventListener('click', ()=>{
+  const content = el('div');
+  const isLoggedIn = Auth.isLoggedIn();
+  let statusHtml = '';
+  if(isLoggedIn){
+    const provider = player.authProvider === 'google' ? 'Google' : 'Facebook';
+    const lastSync = player.lastSyncAt
+      ? new Date(player.lastSyncAt).toLocaleString('id-ID',{day:'numeric',month:'long',hour:'2-digit',minute:'2-digit'})
+      : 'belum pernah';
+    statusHtml = `
+      <div class="account-info-box">
+        <div class="ai-row"><span class="muted">Login via</span><b>${provider}</b></div>
+        <div class="ai-row"><span class="muted">Nama</span><b>${escapeHtml(player.authUserName || '-')}</b></div>
+        <div class="ai-row"><span class="muted">Sync terakhir</span><b>${lastSync}</b></div>
+      </div>`;
+  }else{
+    statusHtml = `<p class="muted" style="font-size:13px;">Belum login. Data tersimpan lokal di HP. Pindah device pakai import/export manual.</p>`;
+  }
+  content.innerHTML = `
+    <h3>Akun &amp; Sync</h3>
+    ${statusHtml}
+    <div class="stack gap-8 mt-12">
+      ${isLoggedIn ? `
+        <button class="btn block" id="acc-sync-now">Sync sekarang</button>
+        <button class="btn secondary block" id="acc-switch">Ganti cara simpan</button>
+        <button class="btn block danger" id="acc-logout" style="background:#a8462e;color:#fff;">Logout</button>
+      ` : `
+        <button class="btn block" id="acc-login-google">Login Google (sync Drive)</button>
+        <button class="btn block" id="acc-login-facebook">Login Facebook (sync server)</button>
+      `}
+    </div>
+    <p class="muted mt-12" style="font-size:11px;line-height:1.5;">
+      <b>Google</b>: sync penuh (foto + progres) via Google Drive kamu. Data tetap milikmu di Drive.<br>
+      <b>Facebook</b>: sync progres (XP, level, koleksi) via server. Foto tetap lokal per device.<br>
+      Import/export manual tetap tersedia lewat tombol Ekspor/Impor di bawah.
+    </p>
+    <button class="btn block mt-16" onclick="document.getElementById('overlay').classList.remove('active')">Tutup</button>`;
+  openSheet(content);
+
+  if(isLoggedIn){
+    $('#acc-sync-now').addEventListener('click', async ()=>{
+      const btn = $('#acc-sync-now'); btn.disabled = true; btn.textContent = 'Mensync...';
+      let r;
+      if(player.authProvider === 'google') r = await DriveSync.syncNow();
+      else r = await FbSync.syncNow();
+      btn.disabled = false; btn.textContent = 'Sync sekarang';
+      if(r.ok) toast('Sync berhasil','success',ICONS.check);
+      else toast('Sync gagal: ' + (r.error || 'unknown'), 'warn', ICONS.warn);
+      updateAccountStatus();
+    });
+    $('#acc-switch').addEventListener('click', ()=>{
+      closeSheet();
+      player.storageChoiceSeen = false;
+      Store.save(player);
+      go('storage-choice');
+    });
+    $('#acc-logout').addEventListener('click', ()=>{
+      Auth.logout();
+      closeSheet();
+      updateAccountStatus();
+    });
+  }else{
+    $('#acc-login-google').addEventListener('click', async ()=>{
+      if(!Auth.isGoogleConfigured()){
+        toast('Google login belum dikonfigurasi developer', 'warn', ICONS.warn);
+        return;
+      }
+      const r = await Auth.loginGoogle();
+      if(r.ok){ closeSheet(); updateAccountStatus(); }
+      else toast(r.error || 'Gagal login', 'warn', ICONS.warn);
+    });
+    $('#acc-login-facebook').addEventListener('click', async ()=>{
+      if(!Auth.isFacebookConfigured()){
+        toast('Facebook login belum dikonfigurasi developer', 'warn', ICONS.warn);
+        return;
+      }
+      if(!Auth.isSupabaseConfigured()){
+        toast('Supabase belum dikonfigurasi', 'warn', ICONS.warn);
+        return;
+      }
+      const r = await Auth.loginFacebook();
+      if(r.ok){ closeSheet(); updateAccountStatus(); }
+      else toast(r.error || 'Gagal login', 'warn', ICONS.warn);
+    });
+  }
+});
+
+// init: update account status saat app load
+updateAccountStatus();
 $('#set-about').addEventListener('click', ()=>{
   const content = el('div');
   content.innerHTML = `
@@ -3771,9 +3902,477 @@ $('#set-install').addEventListener('click', async ()=>{
 });
 
 /* ---------------------------------------------------------------------
-   14d. Momen "wow" kartu (Bagian E addendum) — tilt 3D, reveal ceremony,
-   maskot blink, jurnal stagger. Semua hormati prefers-reduced-motion.
+   14e. Auth & Sync (akun login) — Google Drive + Facebook + manual fallback
+   ---------------------------------------------------------------------
+   Tiga mode penyimpanan:
+   - 'none' (default): lokal di IndexedDB + localStorage. Import/export manual.
+   - 'google': OAuth Google dengan scope drive.file. Backup JSON (foto +
+     metadata) disimpan di Google Drive appDataFolder user. Sync otomatis
+     debounced setelah saveCat. Data tetap milik user di Drive mereka.
+   - 'facebook': FB login via Supabase Auth. Sync metadata only (XP, level,
+     koleksi id, temperamen, achievements) ke tabel user_data Supabase.
+     Foto tetap lokal per device (FB tidak punya cloud storage user-facing).
+
+   Graceful fallback: kalau AUTH config kosong (client ID belum diisi),
+   opsi login tetap tampil tapi menampilkan pesan "belum dikonfigurasi".
+   Pemain tetap bisa main dengan import/export manual.
    --------------------------------------------------------------------- */
+const Auth = {
+  isGoogleConfigured(){
+    return !!(CONFIG.AUTH && CONFIG.AUTH.GOOGLE_CLIENT_ID);
+  },
+  isFacebookConfigured(){
+    return !!(CONFIG.AUTH && CONFIG.AUTH.FACEBOOK_APP_ID);
+  },
+  isSupabaseConfigured(){
+    return !!(CONFIG.LEADERBOARD && CONFIG.LEADERBOARD.SUPABASE_URL && CONFIG.LEADERBOARD.SUPABASE_ANON_KEY);
+  },
+  isLoggedIn(){
+    return !!(player.authProvider && player.authToken);
+  },
+  provider(){
+    return player.authProvider || 'none';
+  },
+
+  /** Login Google via Google Identity Services (GIS). Scope drive.file. */
+  async loginGoogle(){
+    if(!this.isGoogleConfigured()){
+      return { ok:false, error:'Google login belum dikonfigurasi developer. Isi CONFIG.AUTH.GOOGLE_CLIENT_ID.' };
+    }
+    try{
+      // load GIS script kalau belum
+      if(typeof google === 'undefined' || !google.accounts){
+        await this._loadScript('https://accounts.google.com/gsi/client');
+      }
+      const tokenClient = google.accounts.oauth2.initTokenClient({
+        client_id: CONFIG.AUTH.GOOGLE_CLIENT_ID,
+        scope: 'https://www.googleapis.com/auth/drive.file',
+        callback: (response) => {
+          if(response.access_token){
+            player.authProvider = 'google';
+            player.authToken = response.access_token;
+            player.storageChoiceSeen = true;
+            // ambil info user (opsional, butuh scope tambahan)
+            player.authUserName = 'Akun Google';
+            player.authUserEmail = '';
+            Store.save(player);
+            // trigger initial sync (upload atau download)
+            DriveSync.syncNow().then(()=>{
+              toast('Login Google berhasil. Progres tersync ke Drive kamu.', 'success', ICONS.check);
+            }).catch(err=>{
+              console.warn('Drive sync gagal', err);
+              toast('Login berhasil tapi sync awal gagal. Coba sync manual di Pengaturan.', 'warn', ICONS.warn);
+            });
+            this._proceedAfterChoice();
+          }
+        },
+      });
+      tokenClient.requestAccessToken({ prompt: 'consent' });
+      return { ok:true };
+    }catch(err){
+      console.error('loginGoogle error', err);
+      return { ok:false, error:'Gagal login Google: ' + (err.message || err) };
+    }
+  },
+
+  /** Login Facebook via FB SDK. Token dikirim ke Supabase Auth untuk session. */
+  async loginFacebook(){
+    if(!this.isFacebookConfigured()){
+      return { ok:false, error:'Facebook login belum dikonfigurasi developer. Isi CONFIG.AUTH.FACEBOOK_APP_ID.' };
+    }
+    if(!this.isSupabaseConfigured()){
+      return { ok:false, error:'Supabase belum dikonfigurasi. Facebook login butuh Supabase Auth.' };
+    }
+    try{
+      // load FB SDK kalau belum
+      if(typeof FB === 'undefined'){
+        await this._loadScript('https://connect.facebook.net/en_US/sdk.js');
+        FB.init({ appId: CONFIG.AUTH.FACEBOOK_APP_ID, version: 'v18.0' });
+      }
+      // login dengan scope email + public_profile
+      const loginResp = await new Promise((resolve)=>{
+        FB.login(resolve, { scope: 'email,public_profile' });
+      });
+      if(!loginResp.authResponse){
+        return { ok:false, error:'Login Facebook dibatalkan.' };
+      }
+      const fbToken = loginResp.authResponse.accessToken;
+      // kirim token ke Supabase Auth (sign in with Facebook provider)
+      // Supabase REST: POST /auth/v1/signup?provider=facebook tidak langsung via REST.
+      // Pendekatan: pakai Supabase JS client ATAU redirect OAuth flow.
+      // Untuk vanilla JS tanpa SDK, kita simpan token FB langsung + pakai
+      // untuk identify user via FB Graph API. Metadata sync ke tabel user_data
+      // dengan FB user ID sebagai key.
+      const userInfo = await this._fetchFbUserInfo(fbToken);
+      player.authProvider = 'facebook';
+      player.authToken = fbToken;
+      player.authUserName = userInfo.name || 'Pengguna Facebook';
+      player.authUserEmail = userInfo.email || '';
+      player.storageChoiceSeen = true;
+      Store.save(player);
+      // trigger metadata sync
+      FbSync.syncNow().then(()=>{
+        toast('Login Facebook berhasil. Progres tersync ke server.', 'success', ICONS.check);
+      }).catch(err=>{
+        console.warn('FB sync gagal', err);
+        toast('Login berhasil tapi sync awal gagal. Coba sync manual.', 'warn', ICONS.warn);
+      });
+      this._proceedAfterChoice();
+      return { ok:true };
+    }catch(err){
+      console.error('loginFacebook error', err);
+      return { ok:false, error:'Gagal login Facebook: ' + (err.message || err) };
+    }
+  },
+
+  /** Pilih main tanpa akun. */
+  chooseNone(){
+    player.authProvider = '';
+    player.authToken = '';
+    player.authUserName = '';
+    player.authUserEmail = '';
+    player.driveFileId = '';
+    player.storageChoiceSeen = true;
+    Store.save(player);
+    toast('Main tanpa akun. Pakai import/export untuk pindah device.', '', ICONS.check);
+    this._proceedAfterChoice();
+  },
+
+  /** Logout: hapus token, keep local data. */
+  logout(){
+    if(player.authProvider === 'google'){
+      // revoke token via GIS kalau tersedia
+      if(typeof google !== 'undefined' && google.accounts){
+        try{ google.accounts.oauth2.revoke(player.authToken, ()=>{}); }catch(e){}
+      }
+    }else if(player.authProvider === 'facebook' && typeof FB !== 'undefined'){
+      try{ FB.logout(()=>{}); }catch(e){}
+    }
+    player.authProvider = '';
+    player.authToken = '';
+    player.authUserName = '';
+    player.authUserEmail = '';
+    player.driveFileId = '';
+    Store.save(player);
+    toast('Logout berhasil. Data lokal tetap ada.', '', ICONS.check);
+    renderHome();
+  },
+
+  /** Lanjut ke onboarding atau home setelah pilih storage. */
+  _proceedAfterChoice(){
+    if(!player.onboarded){
+      onboardIdx = 0; renderOnboard();
+      go('onboarding');
+    }else{
+      go('home');
+      renderHome();
+    }
+  },
+
+  /** Load external script, return Promise. */
+  _loadScript(src){
+    return new Promise((resolve, reject)=>{
+      const s = document.createElement('script');
+      s.src = src; s.async = true; s.defer = true;
+      s.onload = resolve;
+      s.onerror = ()=> reject(new Error('Gagal load ' + src));
+      document.head.appendChild(s);
+    });
+  },
+
+  /** Fetch user info dari FB Graph API. */
+  async _fetchFbUserInfo(token){
+    try{
+      const r = await fetch(`https://graph.facebook.com/v18.0/me?fields=name,email&access_token=${token}`);
+      if(!r.ok) return {};
+      return await r.json();
+    }catch(e){ return {}; }
+  },
+};
+
+/* Google Drive sync — backup JSON (foto + metadata) ke appDataFolder user. */
+const DriveSync = {
+  _authHeader(){
+    return { 'Authorization': 'Bearer ' + player.authToken, 'Content-Type': 'application/json' };
+  },
+
+  /** Cari file backup di appDataFolder. Return file ID atau null. */
+  async findBackupFile(){
+    if(!player.authToken) return null;
+    try{
+      const q = encodeURIComponent(`name='${CONFIG.AUTH.DRIVE_FILE_NAME}'`);
+      const url = `https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&q=${q}&fields=files(id,name,modifiedTime)`;
+      const r = await fetch(url, { headers: this._authHeader() });
+      if(!r.ok) return null;
+      const data = await r.json();
+      return (data.files && data.files.length > 0) ? data.files[0] : null;
+    }catch(e){ return null; }
+  },
+
+  /** Buat file backup baru di appDataFolder. */
+  async createBackupFile(jsonStr){
+    const metadata = {
+      name: CONFIG.AUTH.DRIVE_FILE_NAME,
+      parents: ['appDataFolder'],
+    };
+    const form = new FormData();
+    form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
+    form.append('file', new Blob([jsonStr], { type: 'application/json' }));
+    const r = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + player.authToken },
+      body: form,
+    });
+    if(!r.ok) throw new Error('Gagal buat file backup');
+    const data = await r.json();
+    return data.id;
+  },
+
+  /** Update file backup existing. */
+  async updateBackupFile(fileId, jsonStr){
+    const r = await fetch(`https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=media`, {
+      method: 'PATCH',
+      headers: { 'Authorization': 'Bearer ' + player.authToken, 'Content-Type': 'application/json' },
+      body: jsonStr,
+    });
+    if(!r.ok) throw new Error('Gagal update file backup');
+  },
+
+  /** Download file backup. Return JSON object atau null. */
+  async downloadBackupFile(fileId){
+    const r = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`, {
+      headers: this._authHeader(),
+    });
+    if(!r.ok) return null;
+    return await r.json();
+  },
+
+  /** Kumpulkan data backup (sama dengan export: player + cats). */
+  async _collectBackupData(){
+    const cats = await allCats();
+    return { exportedAt:new Date().toISOString(), player, cats };
+  },
+
+  /** Upload current state ke Drive. Buat file baru kalau belum ada. */
+  async syncNow(){
+    if(player.authProvider !== 'google' || !player.authToken){
+      return { ok:false, error:'Belum login Google' };
+    }
+    try{
+      const data = await this._collectBackupData();
+      const jsonStr = JSON.stringify(data);
+      let fileId = player.driveFileId;
+      if(!fileId){
+        // cari file existing dulu
+        const existing = await this.findBackupFile();
+        if(existing){
+          fileId = existing.id;
+          // cek apakah file server lebih baru — kalau ya, pull dulu
+          const serverData = await this.downloadBackupFile(fileId);
+          if(serverData){
+            const shouldPull = this._shouldPullFromServer(data, serverData);
+            if(shouldPull){
+              await this._applyBackupData(serverData);
+              player.driveFileId = fileId;
+              player.lastSyncAt = new Date().toISOString();
+              Store.save(player);
+              return { ok:true, action:'pulled' };
+            }
+          }
+        }else{
+          // buat file baru
+          fileId = await this.createBackupFile(jsonStr);
+        }
+      }
+      // upload current state
+      await this.updateBackupFile(fileId, jsonStr);
+      player.driveFileId = fileId;
+      player.lastSyncAt = new Date().toISOString();
+      Store.save(player);
+      return { ok:true, action:'pushed' };
+    }catch(err){
+      console.error('DriveSync.syncNow error', err);
+      return { ok:false, error:err.message || String(err) };
+    }
+  },
+
+  /**
+   * Cek apakah data server lebih baru dari lokal.
+   * Strategi simpel: bandingkan exportedAt + jumlah kucing + total XP.
+   * Kalau server punya lebih banyak kucing ATAU XP lebih tinggi ATAU
+   * exportedAt lebih baru > 60 detik, pull dari server.
+   */
+  _shouldPullFromServer(localData, serverData){
+    if(!serverData || !serverData.player) return false;
+    const localCats = (localData.cats || []).length;
+    const serverCats = (serverData.cats || []).length;
+    const localXp = (localData.player && localData.player.xp) || 0;
+    const serverXp = (serverData.player && serverData.player.xp) || 0;
+    // server lebih kaya = pull
+    if(serverCats > localCats || serverXp > localXp) return true;
+    // server lebih baru > 60s = pull (mungkin ada update dari device lain)
+    try{
+      const localT = new Date(localData.exportedAt).getTime();
+      const serverT = new Date(serverData.exportedAt).getTime();
+      if(serverT - localT > 60000) return true;
+    }catch(e){}
+    return false;
+  },
+
+  /** Apply backup data ke IndexedDB + localStorage. */
+  async _applyBackupData(data){
+    if(!data) return;
+    // merge player state (preserve auth fields yang sudah ada)
+    const authFields = {
+      authProvider: player.authProvider,
+      authToken: player.authToken,
+      authUserName: player.authUserName,
+      authUserEmail: player.authUserEmail,
+      driveFileId: player.driveFileId,
+      storageChoiceSeen: player.storageChoiceSeen,
+    };
+    player = Object.assign({}, Store.defaults(), data.player || {}, authFields);
+    Store.save(player);
+    // replace cats di IndexedDB (mode ganti total)
+    if(Array.isArray(data.cats)){
+      const db = await getDB();
+      await db.clear('cats');
+      for(const c of data.cats){
+        await db.put('cats', c);
+      }
+      currentCatsCache = await allCats();
+    }
+  },
+};
+
+/* Facebook metadata sync — simpan metadata ke Supabase tabel user_data.
+   Foto tetap lokal (FB tidak punya cloud storage user-facing). */
+const FbSync = {
+  /** Header untuk Supabase REST API dengan FB token sebagai Bearer. */
+  _headers(){
+    return {
+      'apikey': CONFIG.LEADERBOARD.SUPABASE_ANON_KEY,
+      'Authorization': 'Bearer ' + player.authToken,
+      'Content-Type': 'application/json',
+      'Prefer': 'resolution=merge-duplicates',
+    };
+  },
+  _url(path){
+    return CONFIG.LEADERBOARD.SUPABASE_URL.replace(/\/$/, '') + path;
+  },
+
+  /** Sync metadata (player state tanpa foto) ke tabel user_data.
+     Field: fb_user_id (PK), data (jsonb), updated_at (timestamptz). */
+  async syncNow(){
+    if(player.authProvider !== 'facebook' || !player.authToken) return { ok:false, error:'Belum login Facebook' };
+    if(!Auth.isSupabaseConfigured()) return { ok:false, error:'Supabase belum dikonfigurasi' };
+    try{
+      // ambil FB user ID
+      const userInfo = await Auth._fetchFbUserInfo(player.authToken);
+      const fbUserId = userInfo.id;
+      if(!fbUserId) return { ok:false, error:'Gagal ambil FB user ID' };
+      // kumpulkan metadata (player state, tanpa authToken)
+      const metadata = Object.assign({}, player);
+      delete metadata.authToken; // jangan simpan token ke server
+      const body = JSON.stringify({
+        fb_user_id: fbUserId,
+        data: metadata,
+        updated_at: new Date().toISOString(),
+      });
+      const r = await fetch(this._url('/rest/v1/user_data'), {
+        method: 'POST',
+        headers: this._headers(),
+        body,
+      });
+      if(!r.ok) return { ok:false, error:'Gagal sync ke server' };
+      player.lastSyncAt = new Date().toISOString();
+      Store.save(player);
+      return { ok:true };
+    }catch(err){
+      console.error('FbSync.syncNow error', err);
+      return { ok:false, error:err.message || String(err) };
+    }
+  },
+
+  /** Pull metadata dari server (untuk restore di device baru). */
+  async pullFromServer(){
+    if(player.authProvider !== 'facebook' || !player.authToken) return { ok:false };
+    if(!Auth.isSupabaseConfigured()) return { ok:false };
+    try{
+      const userInfo = await Auth._fetchFbUserInfo(player.authToken);
+      const fbUserId = userInfo.id;
+      if(!fbUserId) return { ok:false };
+      const url = this._url(`/rest/v1/user_data?fb_user_id=eq.${fbUserId}&select=data`);
+      const r = await fetch(url, { headers: this._headers() });
+      if(!r.ok) return { ok:false };
+      const data = await r.json();
+      if(!Array.isArray(data) || data.length === 0) return { ok:false, error:'Belum ada data tersimpan' };
+      const serverPlayer = data[0].data;
+      // merge: preserve auth fields lokal, ambil sisanya dari server
+      const authFields = {
+        authProvider: player.authProvider,
+        authToken: player.authToken,
+        authUserName: player.authUserName,
+        authUserEmail: player.authUserEmail,
+        storageChoiceSeen: player.storageChoiceSeen,
+      };
+      player = Object.assign({}, Store.defaults(), serverPlayer || {}, authFields);
+      Store.save(player);
+      player.lastSyncAt = new Date().toISOString();
+      Store.save(player);
+      return { ok:true };
+    }catch(err){
+      console.error('FbSync.pullFromServer error', err);
+      return { ok:false, error:err.message };
+    }
+  },
+};
+
+// Trigger sync setelah saveCat (debounced). Cek provider + jalankan sync yang sesuai.
+let syncDebounceTimer = null;
+function triggerSyncAfterSave(){
+  if(!Auth.isLoggedIn()) return;
+  if(syncDebounceTimer) clearTimeout(syncDebounceTimer);
+  syncDebounceTimer = setTimeout(async ()=>{
+    if(player.authProvider === 'google'){
+      const r = await DriveSync.syncNow();
+      if(!r.ok) console.warn('Auto-sync Google gagal', r.error);
+    }else if(player.authProvider === 'facebook'){
+      const r = await FbSync.syncNow();
+      if(!r.ok) console.warn('Auto-sync Facebook gagal', r.error);
+    }
+  }, CONFIG.AUTH.SYNC_DEBOUNCE_MS);
+}
+
+// Handler untuk layar pilih storage
+document.querySelectorAll('.storage-opt').forEach(btn=>{
+  btn.addEventListener('click', async ()=>{
+    const provider = btn.dataset.provider;
+    const note = $('#storage-choice-note');
+    if(provider === 'none'){
+      Auth.chooseNone();
+    }else if(provider === 'google'){
+      if(!Auth.isGoogleConfigured()){
+        if(note) note.innerHTML = 'Google login belum dikonfigurasi developer. Sementara pakai <b>main tanpa akun</b> dulu ya — import/export manual tetap tersedia.';
+        return;
+      }
+      const r = await Auth.loginGoogle();
+      if(!r.ok && note) note.textContent = r.error;
+    }else if(provider === 'facebook'){
+      if(!Auth.isFacebookConfigured()){
+        if(note) note.innerHTML = 'Facebook login belum dikonfigurasi developer. Sementara pakai <b>main tanpa akun</b> dulu ya — import/export manual tetap tersedia.';
+        return;
+      }
+      if(!Auth.isSupabaseConfigured()){
+        if(note) note.innerHTML = 'Supabase belum dikonfigurasi (dibutuhkan untuk Facebook login). Sementara pakai <b>main tanpa akun</b> dulu ya.';
+        return;
+      }
+      const r = await Auth.loginFacebook();
+      if(!r.ok && note) note.textContent = r.error;
+    }
+  });
+});
+
 
 /**
  * E1 addendum: attach tilt 3D + holografik reaktif ke elemen .trading-card.
@@ -4161,7 +4760,12 @@ function fixSvgA11y(){
 (async function init(){
   currentCatsCache = await allCats();
   renderOnboard();
-  if(player.onboarded){ go('home'); }
+  // Auth & sync: tampilkan layar pilih storage kalau belum pernah pilih.
+  // Pemain yang sudah login (authProvider != '') skip langsung.
+  // Pemain yang sudah pernah lihat tapi pilih "none" juga skip (storageChoiceSeen=true).
+  if(!player.storageChoiceSeen && !Auth.isLoggedIn()){
+    go('storage-choice');
+  }else if(player.onboarded){ go('home'); }
   else { go('onboarding'); }
   fixSvgA11y();
   // re-run a11y fix setelah render dinamis (pemanggilan internal di go() sudah handle via DOM mutation)

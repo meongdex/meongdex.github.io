@@ -40,6 +40,116 @@ Jejak singkat posisi proyek, diperbarui di setiap akhir batch kerja. Dipakai unt
 - **2026-07-04 (batch 26)** — Bagian F1 + I1 addendum (coach-mark kontekstual + streak elemen hidup). (F1) Coach-mark kontekstual "show, don't tell": function `showCoachMark(targetEl, text, key)` menampilkan overlay full-screen dengan spotlight (lingkaran terang via box-shadow 9999px) di sekitar target + tooltip 1 baris keterangan. Hanya muncul SEKALI per key — flag disimpan di `player.coachMarksSeen` (object). Dismiss handlers: tap di mana saja, pointerdown di target, atau auto-timeout 8 detik. Hormati `prefers-reduced-motion`. Trigger pertama: `initFeed` di-override untuk panggil `showCoachMark($('#btn-throw'), 'Tahan untuk isi daya, lepas untuk lempar makanan.', 'feed-throw')` 600ms setelah feed render. Pola ini bisa dipakai untuk coach-mark lain di masa depan (verify-ai, card-color, dex-strip) — tinggal panggil `showCoachMark` dengan key baru. Field baru di Store.defaults: `coachMarksSeen:{}`. (I1) Streak sebagai elemen hidup di Beranda: stat-box streak dapat ikon flame SVG (line-icon, bukan emoji) di pojok kanan atas dengan animasi `flameFlicker` (scale + rotate halus tiap 1.4s). Saat streak naik (cek prev value vs new value di `renderHome`), stat-box dapat class `.streak-up` yang trigger `streakBounce` animation (scale 1.15 + glow ring 6px selama 0.6s). Hormati `prefers-reduced-motion` (flame hidden + bounce disabled). Tujuan: jadi salah satu alasan kuat pemain kembali tiap hari — konsisten dengan pola reward "melihat progres langsung" yang sudah terbukti efektif di bagian lain (radar pulse, weekly mission card). Verifikasi: node --check PASS, local server HTTP 200.
 - **2026-07-04 (batch 27)** — Bagian F3 + I2 + I3 + K1 + K2 addendum (sisa item dari tinjauan langsung repo). (F3) Mode latihan: tombol "Belum ada kucing? Coba mode latihan" di layar perm-loc, style dashed italic supaya jelas opsi sekunder. Handler skip lokasi + set `practiceMode=true` flag + toast pengingat. Saat `buildNewCard`, nama default jadi `Kucing (latihan) #N` (bukan `Kucing Tanpa Nama`) supaya jelas kartu itu bukan temuan nyata. Implementasi simpel — tidak ada foto contoh generik karena integrity koleksi Meongdex lebih penting daripada simulasi (pemain pakai foto apa saja yang mereka punya). Trade-off didokumentasikan: pemain masih bisa simpan kartu latihan ke Meongdex, tapi dengan label "(latihan)" di nama. `practiceMode` reset di `buildNewCard` supaya cat berikutnya tidak ikut terlabeli. (I2) Vitrine badge bergaya rak medali di layar Statistik: ach-item sekarang `.vitrine` dengan medal bulat 44x44 + ikon penuh warna emas kalau unlocked, atau siluet abu-abu "???" + ikon wajah sedih opacity .35 kalau locked. Background gradient emas halus untuk done. Tujuan: achievement terasa seperti koleksi medali fisik, bukan cuma daftar centang — mendorong pemain pengumpul. (I3) Konteks cuaca saat ditemukan: `renderWeather` cache `lastWeatherSnapshot = {label, temp, code}` saat fetch berhasil. `buildNewCard` simpan `c.weatherAtCapture = lastWeatherSnapshot.label`. Detail kartu tampilkan "cuaca {label.toLowerCase()}" di sub baris (sebelah tanggal + lokasi). Tanpa API call tambahan — reuse data yang sudah ada. Opsional: kalau cuaca gagal fetch, field null dan tidak ditampilkan. (K1) Parallax ringan di hero landing page: elemen dengan `data-parallax="0.X"` (paw-ring 0.15, mascot 0.25, badge b1 0.4, badge b2 0.5) bergerak `translateY(scrollY * coef * -1)` via scroll listener + requestAnimationFrame. Hormati `prefers-reduced-motion` (skip total). Tujuan: hero terasa berlapis/"3D" di titik pertama calon pemain menyentuh brand. (K2) Lightbox screenshot: click gambar di `.shots` strip = buka overlay full-screen `#lightbox` dengan gambar besar (max 90vw x 85vh) + tombol close 44x44. Dismiss: click di mana saja, tombol close, atau Escape key. Tujuan: calon pemain bisa lihat detail screenshot sebelum install. Verifikasi: node --check PASS, local server HTTP 200.
 
+- **2026-07-04 (batch 28)** — Auth & sync (akun login): Google Drive sync + Facebook metadata sync + main tanpa akun. Layar "Pilih cara menyimpan progres" muncul saat first launch dengan 3 opsi: (1) Main tanpa akun — lokal + import/export manual (default, paling privat), (2) Login Google — sync penuh (foto + metadata) via Google Drive appDataFolder user, data tetap milik user di Drive mereka, (3) Login Facebook — sync metadata only (XP, level, koleksi id, temperamen, achievements) via Supabase tabel user_data, foto tetap lokal per device (FB tidak punya cloud storage user-facing). Implementasi: modul `Auth` (loginGoogle/loginFacebook/chooseNone/logout), `DriveSync` (findBackupFile/createBackupFile/updateBackupFile/downloadBackupFile/syncNow dengan smart pull-if-server-richer), `FbSync` (syncNow/pullFromServer), `triggerSyncAfterSave()` debounced 3s setelah saveCat. Field baru di Store.defaults: authProvider, authToken, authUserName, authUserEmail, driveFileId, lastSyncAt, storageChoiceSeen. Tombol "Akun & Sync" di Pengaturan dengan sheet status + sync now + switch account + logout. Graceful fallback: kalau AUTH config kosong (client ID belum diisi), opsi login tampilkan pesan "belum dikonfigurasi developer" dan pemain tetap bisa main dengan import/export manual. Import/export manual tetap dipertahankan sebagai opsi paralel. Konfigurasi di `CONFIG.AUTH` (GOOGLE_CLIENT_ID, FACEBOOK_APP_ID) + `CONFIG.LEADERBOARD` (Supabase, reuse untuk FB sync). Panduan setup lengkap di bagian "Setup Auth & Sync" README. Verifikasi: node --check PASS, local server HTTP 200.
+
+---
+
+## Setup Auth & Sync (opsional, batch 28)
+
+Auth & sync opsional — pemain tetap bisa main tanpa akun dengan import/export manual. Kalau kamu (pengembang) ingin mengaktifkan login Google/Facebook, ikuti langkah berikut.
+
+### 1. Setup Google Login (sync via Google Drive)
+
+**a. Buat proyek di Google Cloud Console**
+- Buka https://console.cloud.google.com (login dengan akun Google).
+- Buat proyek baru (atau pilih existing), misal "Meongdex".
+- Buka **APIs & Services → Library**, enable **Google Drive API**.
+
+**b. Buat OAuth 2.0 Client ID**
+- Buka **APIs & Services → Credentials → Create Credentials → OAuth client ID**.
+- Application type: **Web application**.
+- Authorized JavaScript origins: tambah `https://meongdex.github.io` (dan `http://localhost:8080` untuk testing lokal).
+- Authorized redirect URIs: tidak perlu (pakai implicit flow via GIS).
+- Salin **Client ID** (format: `xxxxx.apps.googleusercontent.com`).
+
+**c. Konfigurasi OAuth Consent Screen**
+- Buka **APIs & Services → OAuth consent screen**.
+- User type: **External** (kalau tidak pakai Google Workspace).
+- App name: Meongdex. Support email: email kamu.
+- Scopes: `drive.file` (hanya akses file yang dibuat app ini, bukan semua Drive user).
+- Test users: tambah email kamu selama development (publish ke production kalau sudah siap).
+
+**d. Isi `CONFIG.AUTH` di `game/app.js`**
+```js
+AUTH: {
+  GOOGLE_CLIENT_ID: 'xxxxx.apps.googleusercontent.com',
+  FACEBOOK_APP_ID: '',
+  DRIVE_FILE_NAME: 'meongdex-backup.json',
+  SYNC_DEBOUNCE_MS: 3000,
+},
+```
+
+**e. Cara kerja sync Google**
+- Pemain login → dapat access token dengan scope `drive.file`.
+- Backup JSON (foto base64 + metadata) disimpan di `appDataFolder` Drive user (folder tersembunyi, tidak visible di Drive UI user, khusus app ini).
+- Auto-sync debounced 3 detik setelah `saveCat`.
+- Smart pull: kalau server punya lebih banyak kucing atau XP lebih tinggi, pull dari server (untuk cross-device).
+- Data tetap milik user di Drive mereka — developer tidak punya akses.
+
+### 2. Setup Facebook Login (sync metadata via Supabase)
+
+**a. Buat App di Facebook App Dashboard**
+- Buka https://developers.facebook.com → My Apps → Create App.
+- App type: **Consumer**. App name: Meongdex.
+- Tambah produk **Facebook Login**.
+- Settings → Basic: salin **App ID**.
+- Facebook Login → Settings → Valid OAuth Redirect URIs: tambah `https://meongdex.github.io/` (dan `http://localhost:8080/` untuk testing).
+
+**b. Setup Supabase Auth (reuse proyek Supabase yang sudah ada untuk leaderboard)**
+- Buka dashboard Supabase yang sudah dibuat untuk leaderboard.
+- Buka **Authentication → Providers → Facebook** → Enable.
+- Masukkan Facebook App ID + App Secret.
+- Salin **Redirect URL** dari Supabase, tambah ke Facebook Login → Valid OAuth Redirect URIs.
+
+**c. Buat tabel `user_data` di Supabase**
+- Buka SQL Editor di dashboard Supabase, jalankan:
+```sql
+create table if not exists public.user_data (
+  fb_user_id text primary key,
+  data jsonb not null,
+  updated_at timestamptz not null default now()
+);
+alter table public.user_data enable row level security;
+-- Pemain bisa read + write data mereka sendiri (auth_uid via FB user id)
+-- Catatan: RLS ini longgar karena tidak pakai Supabase Auth session penuh.
+-- Untuk produksi, pertimbangkan pakai Supabase Auth SDK penuh dengan FB provider.
+create policy "Anyone can read user_data" on public.user_data for select using (true);
+create policy "Anyone can upsert user_data" on public.user_data for insert with check (true);
+create policy "Anyone can update user_data" on public.user_data for update using (true);
+```
+
+**d. Isi `CONFIG.AUTH` + `CONFIG.LEADERBOARD` di `game/app.js`**
+```js
+LEADERBOARD: {
+  SUPABASE_URL: 'https://xxxx.supabase.co',
+  SUPABASE_ANON_KEY: 'eyJ...',
+  // ... (sudah ada untuk leaderboard)
+},
+AUTH: {
+  GOOGLE_CLIENT_ID: '',
+  FACEBOOK_APP_ID: '1234567890',
+  // ...
+},
+```
+
+**e. Cara kerja sync Facebook**
+- Pemain login FB → dapat access token.
+- Token dipakai untuk fetch user info (name, email) via FB Graph API.
+- Metadata (player state tanpa authToken) disimpan ke tabel `user_data` Supabase dengan `fb_user_id` sebagai key.
+- Auto-sync debounced 3 detik setelah `saveCat`.
+- Foto tetap lokal per device (FB tidak punya cloud storage user-facing).
+- Untuk pindah device: login FB di device baru → pull metadata dari server. Foto perlu import manual.
+
+### 3. Test
+- Push perubahan ke main, tunggu GitHub Pages rebuild.
+- Buka https://meongdex.github.io/game/ → first launch akan tampilkan layar pilih storage.
+- Test tiap opsi: none (import/export), Google (Drive sync), Facebook (metadata sync).
+- Cek Pengaturan → Akun & Sync untuk status + sync now + logout.
+
+Kalau config kosong, opsi login tetap tampil tapi menampilkan pesan "belum dikonfigurasi developer" dan pemain tetap bisa main dengan import/export manual.
+
+---
+
 ### Catatan: Bagian J (Aksesibilitas & kenyamanan luar ruangan) — checklist, bukan batch terpisah
 
 Bagian J di audit adalah checklist yang harus ditempelkan di SETIAP batch yang menyentuh animasi/visual baru, bukan batch terpisah. Sepanjang batch 22-27, semua checklist berikut sudah dipatuhi:
