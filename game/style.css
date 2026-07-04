@@ -915,7 +915,7 @@ main{flex:1;display:flex;flex-direction:column;position:relative;overflow:hidden
   box-shadow:0 8px 14px -8px rgba(58,46,42,.3);
 }
 .shelter-slot.epic .cat-bed{border-color:#9b6dd4;box-shadow:0 8px 14px -8px rgba(155,109,212,.5);}
-.shelter-slot.legendary .cat-bed{border-color:var(--gold);box-shadow:0 0 18px -2px rgba(212,175,55,.5);}
+.shelter-slot.legendary .cat-bed{border-color:#C2185B;box-shadow:0 0 18px -2px rgba(194,24,91,.5);}
 .shelter-slot .cat-bed svg{width:65%;height:65%;}
 .shelter-slot .cat-bed img{width:100%;height:100%;object-fit:cover;}
 .shelter-slot .name-tag{
@@ -958,19 +958,22 @@ main{flex:1;display:flex;flex-direction:column;position:relative;overflow:hidden
   background:linear-gradient(135deg,rgba(155,109,212,.5),transparent 30%,transparent 70%,rgba(155,109,212,.5));
   z-index:-1;filter:blur(6px);opacity:.6;
 }
-.trading-card.legendary{border-color:var(--gold);border-width:4px;}
-.trading-card.legendary .rarity-tag{background:var(--gold);color:var(--rarity-rare-ink);}
+/* Bagian D2 addendum: legendaris dapat warna signature rose/magenta sendiri,
+   berbeda dari emas langka. Border rose + cincin shimmer prismatik (rose-gold-teal)
+   supaya terlihat paling istimewa di antara semua rarity. */
+.trading-card.legendary{border-color:#C2185B;border-width:4px;}
+.trading-card.legendary .rarity-tag{background:#C2185B;color:#fff;}
 .trading-card.legendary::before{
   content:"";position:absolute;inset:-6px;border-radius:var(--radius-lg);
-  background:conic-gradient(from 0deg, var(--gold), #fff8c4, var(--gold), #fff8c4, var(--gold));
-  z-index:-2;filter:blur(8px);opacity:.5;animation:shimmer 3s linear infinite;
+  background:conic-gradient(from 0deg, #C2185B, var(--gold), #4A9B8E, var(--gold), #C2185B);
+  z-index:-2;filter:blur(8px);opacity:.55;animation:shimmer 4s linear infinite;
 }
 @keyframes shimmer{from{transform:rotate(0deg);}to{transform:rotate(360deg);}}
 .mini-card.epic{border-color:#9b6dd4;}
 .mini-card.epic .pin{background:#9b6dd4;}
-.mini-card.legendary{border-color:var(--gold);border-width:3px;}
-.mini-card.legendary .pin{background:var(--gold);}
-.mini-card.legendary .thumb{box-shadow:0 0 10px rgba(212,175,55,.4);}
+.mini-card.legendary{border-color:#C2185B;border-width:3px;}
+.mini-card.legendary .pin{background:#C2185B;}
+.mini-card.legendary .thumb{box-shadow:0 0 10px rgba(194,24,91,.4);}
 
 /* ---------- 37. Card skins (tema kosmetik) ---------- */
 .trading-card.skin-mint{border-color:#7ec8b8;}

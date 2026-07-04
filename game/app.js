@@ -49,7 +49,11 @@ const RARITIES = {
   biasa:      { label:'BIASA',      color:'#4A9B8E', ink:'#fff',      order:1 },
   langka:     { label:'LANGKA',     color:'#D4AF37', ink:'#4A3A0E',   order:2 },
   epik:       { label:'EPIK',       color:'#9b6dd4', ink:'#fff',      order:3 },
-  legendaris: { label:'LEGENDARIS', color:'#D4AF37', ink:'#4A3A0E',   order:4 },
+  // Bagian D2 addendum: legendaris dapat warna signature sendiri (rose/magenta
+  // tua) supaya jelas berbeda dari emas langka di grafik Statistik dan dot
+  // indicator. Untuk kartu polaroid, gradient prismatik dipakai via CSS class
+  // .trading-card.legendary (lihat style.css).
+  legendaris: { label:'LEGENDARIS', color:'#C2185B', ink:'#fff',       order:4 },
 };
 
 // Tema kartu kosmetik (Fase 3): skin alternatif (opsional, sukarela)
@@ -2650,8 +2654,8 @@ async function drawAlbumSheet(canvas, cats, count){
     // kartu putih
     ctx.fillStyle = '#FFFDF8';
     roundRect(ctx, x, y, cellW, cellH, 18); ctx.fill();
-    // border kelangkaan
-    const border = c.rarity==='langka' ? '#D4AF37' : (c.rarity==='epik' ? '#9b6dd4' : (c.rarity==='legendaris' ? '#C9652F' : '#4A9B8E'));
+    // border kelangkaan — D2 addendum: legendaris pakai rose/magenta signature
+    const border = c.rarity==='langka' ? '#D4AF37' : (c.rarity==='epik' ? '#9b6dd4' : (c.rarity==='legendaris' ? '#C2185B' : '#4A9B8E'));
     ctx.strokeStyle = border; ctx.lineWidth = 4;
     roundRect(ctx, x, y, cellW, cellH, 18); ctx.stroke();
     // foto
@@ -2722,8 +2726,11 @@ async function drawShareCard(canvas, cat, h){
   // kartu putih
   ctx.fillStyle = '#FFFDF8';
   roundRect(ctx, cardX, cardY, cardW, cardH, 36); ctx.fill();
-  // border kelangkaan
-  const border = cat.rarity==='langka' ? '#D4AF37' : '#4A9B8E';
+  // border kelangkaan — D2 addendum: dukung 4 rarity dengan warna signature masing-masing
+  const border = cat.rarity==='langka' ? '#D4AF37'
+               : cat.rarity==='epik' ? '#9b6dd4'
+               : cat.rarity==='legendaris' ? '#C2185B'
+               : '#4A9B8E';
   ctx.strokeStyle = border; ctx.lineWidth = 10;
   roundRect(ctx, cardX, cardY, cardW, cardH, 36); ctx.stroke();
 
@@ -2751,13 +2758,14 @@ async function drawShareCard(canvas, cat, h){
   ctx.fillStyle = '#fff'; ctx.font = 'bold 24px "JetBrains Mono",monospace';
   ctx.textBaseline = 'middle';
   ctx.fillText('#'+cat.id.replace('MDX-',''), photoX+34, photoY+43);
-  // rarity tag top-right foto
-  const rarityLabel = cat.rarity==='langka' ? 'LANGKA' : 'BIASA';
+  // rarity tag top-right foto — D2 addendum: dukung 4 rarity dengan label + warna teks yang sesuai
+  const rarInfo = RARITIES[cat.rarity] || RARITIES.biasa;
+  const rarityLabel = rarInfo.label;
   ctx.font = 'bold 22px "JetBrains Mono",monospace';
   const rw = ctx.measureText(rarityLabel).width + 40;
   ctx.fillStyle = border;
   roundRect(ctx, photoX+photoW-rw-18, photoY+18, rw, 50, 999); ctx.fill();
-  ctx.fillStyle = cat.rarity==='langka' ? '#4A3A0E' : '#fff';
+  ctx.fillStyle = rarInfo.ink;
   ctx.textAlign = 'center';
   ctx.fillText(rarityLabel, photoX+photoW-rw/2-18, photoY+43);
   ctx.textAlign = 'left';
@@ -3536,6 +3544,14 @@ if('serviceWorker' in navigator){
       if(refreshing) return;
       refreshing = true;
       window.location.reload();
+    });
+    // Bagian D1 addendum: terima pesan dari SW saat stale-while-revalidate
+    // mendeteksi konten berubah. Tampilkan toast update supaya pemain tahu
+    // ada versi baru yang akan aktif setelah refresh.
+    navigator.serviceWorker.addEventListener('message', (ev)=>{
+      if(ev.data && ev.data.type === 'meongdex-content-updated'){
+        showUpdateToast();
+      }
     });
   });
 }
