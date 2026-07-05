@@ -120,7 +120,7 @@
   }
   .hero-visual .paws{position:absolute;inset:0;overflow:hidden;}
   .hero-visual .paws svg{position:absolute;opacity:.18;color:var(--terracotta-deep);}
-  .hero-visual svg.mascot-big{width:min(300px,70vw);position:relative;z-index:2;animation:floaty 3.4s ease-in-out infinite;}
+  .hero-visual .mascot-big{width:min(280px,70vw);position:relative;z-index:2;animation:floaty 3.4s ease-in-out infinite;user-select:none;-webkit-user-drag:none;}
   @keyframes floaty{0%,100%{transform:translateY(0);}50%{transform:translateY(-10px);}}
   .hero-visual .badge-float{
     position:absolute;z-index:3;background:var(--paper);border:1px solid var(--line);
@@ -310,26 +310,7 @@
       </div>
       <div class="badge-float b1" data-parallax="0.4"><span class="dot" style="background:var(--gold);"></span> Kartu langka!</div>
       <div class="badge-float b2" data-parallax="0.5"><span class="dot" style="background:var(--teal);"></span> Lv 4 · 14 kucing</div>
-      <svg class="mascot-big" data-parallax="0.25" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" aria-label="Maskot Si Oren">
-        <ellipse cx="100" cy="158" rx="58" ry="14" fill="rgba(58,46,42,0.10)"/>
-        <path d="M55 70 L38 28 L78 56 Z" fill="#E8804C"/>
-        <path d="M145 70 L162 28 L122 56 Z" fill="#E8804C"/>
-        <path d="M60 66 L48 42 L74 56 Z" fill="#C9652F" opacity="0.55"/>
-        <path d="M140 66 L152 42 L126 56 Z" fill="#C9652F" opacity="0.55"/>
-        <ellipse cx="100" cy="115" rx="62" ry="55" fill="#E8804C"/>
-        <path d="M45 100 q10 20 0 40" stroke="#C9652F" stroke-width="5" fill="none" stroke-linecap="round" opacity="0.7"/>
-        <path d="M155 100 q-10 20 0 40" stroke="#C9652F" stroke-width="5" fill="none" stroke-linecap="round" opacity="0.7"/>
-        <ellipse cx="100" cy="128" rx="30" ry="24" fill="#FFF8ED"/>
-        <circle cx="82" cy="108" r="7.5" fill="#3A2E2A"/>
-        <circle cx="118" cy="108" r="7.5" fill="#3A2E2A"/>
-        <circle cx="84.5" cy="105" r="2.4" fill="#fff"/>
-        <circle cx="120.5" cy="105" r="2.4" fill="#fff"/>
-        <path d="M96 120 q4 4 4 4 q0 0 4 -4" stroke="#3A2E2A" stroke-width="3" fill="none" stroke-linecap="round"/>
-        <path d="M100 120 v4" stroke="#3A2E2A" stroke-width="3" stroke-linecap="round"/>
-        <path d="M94 124 q6 6 12 0" stroke="#3A2E2A" stroke-width="3" fill="none" stroke-linecap="round"/>
-        <path d="M70 128 q-16 -2 -28 4M70 134 q-16 4 -28 10M130 128 q16 -2 28 4M130 134 q16 4 28 10" stroke="#3A2E2A" stroke-width="2" fill="none" stroke-linecap="round" opacity="0.85"/>
-        <path d="M60 155 Q100 178 140 155" stroke="#C9652F" stroke-width="6" fill="none" stroke-linecap="round"/>
-      </svg>
+      <img class="mascot-big" data-parallax="0.25" id="landing-mascot" src="game/assets/mascot/frames/si-oren-idle.png" alt="Maskot Si Oren" />
     </div>
   </div>
 </section>
@@ -597,6 +578,30 @@
     document.addEventListener('keydown', function(e){
       if(e.key === 'Escape' && lb.classList.contains('active')) close();
     });
+  })();
+
+  // Landing mascot idle animator -- frame swap sederhana (idle/blink/curious/tailwag)
+  (function(){
+    var mascot = document.getElementById('landing-mascot');
+    if(!mascot) return;
+    var prefersReduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if(prefersReduced) return;
+    var frames = [
+      { src: 'game/assets/mascot/frames/si-oren-idle.png', dur: 2500 },
+      { src: 'game/assets/mascot/frames/si-oren-blink.png', dur: 180 },
+      { src: 'game/assets/mascot/frames/si-oren-idle.png', dur: 1800 },
+      { src: 'game/assets/mascot/frames/si-oren-curious.png', dur: 900 },
+      { src: 'game/assets/mascot/frames/si-oren-idle.png', dur: 1500 },
+      { src: 'game/assets/mascot/frames/si-oren-tailwag.png', dur: 700 },
+      { src: 'game/assets/mascot/frames/si-oren-idle.png', dur: 2000 }
+    ];
+    var idx = 0;
+    function nextFrame(){
+      idx = (idx + 1) % frames.length;
+      mascot.src = frames[idx].src;
+      setTimeout(nextFrame, frames[idx].dur);
+    }
+    setTimeout(nextFrame, frames[0].dur);
   })();
 </script>
 </body>
