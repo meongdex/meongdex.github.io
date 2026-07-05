@@ -259,17 +259,24 @@ main{flex:1;display:flex;flex-direction:column;position:relative;overflow:hidden
 .onboard-mascot{flex:1;display:flex;align-items:center;justify-content:center;min-height:200px;position:relative;}
 .onboard-mascot svg{width:170px;animation:floaty 3s ease-in-out infinite;}
 @keyframes floaty{0%,100%{transform:translateY(0);}50%{transform:translateY(-8px);}}
-/* Three.js 3D mascot container */
-.mascot-3d-container{
-  width:200px;height:200px;position:relative;
-  animation:floaty 3s ease-in-out infinite;
-  cursor:grab;
+#mascot3d-canvas{
+  display:none;width:100%;height:100%;max-width:260px;max-height:260px;
+  touch-action:none;cursor:grab;
 }
-.mascot-3d-container:active{cursor:grabbing;}
-.mascot-3d-container canvas{width:100%;height:100%;display:block;}
-.mascot-svg-fallback{width:170px;animation:floaty 3s ease-in-out infinite;}
-@media (prefers-reduced-motion:reduce){
-  .mascot-3d-container,.onboard-mascot svg,.mascot-svg-fallback{animation:none;}
+#mascot3d-canvas:active{cursor:grabbing;}
+.mascot-bubble{
+  position:absolute;top:2px;left:50%;transform:translateX(-50%);
+  background:var(--paper);border:1px solid var(--line);color:var(--charcoal);
+  font-family:'Fredoka',sans-serif;font-weight:600;font-size:13px;
+  padding:5px 14px;border-radius:999px;box-shadow:var(--shadow-sm);
+  opacity:0;pointer-events:none;
+}
+.mascot-bubble.show{ animation:mascotBubble 1.15s ease forwards; }
+@keyframes mascotBubble{
+  0%{opacity:0;transform:translateX(-50%) translateY(8px) scale(.85);}
+  15%{opacity:1;transform:translateX(-50%) translateY(-6px) scale(1);}
+  75%{opacity:1;transform:translateX(-50%) translateY(-14px) scale(1);}
+  100%{opacity:0;transform:translateX(-50%) translateY(-22px) scale(.9);}
 }
 .onboard-copy{display:flex;flex-direction:column;gap:6px;}
 .onboard-copy h3{font-size:22px;}

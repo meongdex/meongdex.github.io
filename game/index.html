@@ -38,12 +38,8 @@
     <!-- ================= ONBOARDING ================= -->
     <section class="screen onboard active" data-screen="onboarding" id="screen-onboarding">
       <div class="onboard-mascot" id="onboard-mascot">
-        <!-- 3D mascot container (Three.js) — fallback ke SVG kalau WebGL tidak support -->
-        <div class="mascot-3d-container" id="mascot-3d-container" aria-label="Maskot Si Oren 3D">
-          <canvas id="mascot-3d-canvas"></canvas>
-        </div>
-        <!-- SVG fallback (hidden by default, shown kalau WebGL gagal) -->
-        <svg class="mascot-svg-fallback" id="mascot-svg-fallback" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" aria-label="Maskot Si Oren" style="display:none;">
+        <!-- Si Oren -->
+        <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" aria-label="Maskot Si Oren">
           <ellipse cx="100" cy="158" rx="58" ry="14" fill="rgba(58,46,42,0.10)"/>
           <path d="M55 70 L38 28 L78 56 Z" fill="#E8804C"/>
           <path d="M145 70 L162 28 L122 56 Z" fill="#E8804C"/>
@@ -53,20 +49,17 @@
           <path d="M45 100 q10 20 0 40" stroke="#C9652F" stroke-width="5" fill="none" stroke-linecap="round" opacity="0.7"/>
           <path d="M155 100 q-10 20 0 40" stroke="#C9652F" stroke-width="5" fill="none" stroke-linecap="round" opacity="0.7"/>
           <ellipse cx="100" cy="128" rx="30" ry="24" fill="#FFF8ED"/>
-          <g class="mascot-eye" data-mascot-eye="left" style="transform-origin:82px 108px;">
-            <circle cx="82" cy="108" r="7.5" fill="#3A2E2A"/>
-            <circle cx="84.5" cy="105" r="2.4" fill="#fff"/>
-          </g>
-          <g class="mascot-eye" data-mascot-eye="right" style="transform-origin:118px 108px;">
-            <circle cx="118" cy="108" r="7.5" fill="#3A2E2A"/>
-            <circle cx="120.5" cy="105" r="2.4" fill="#fff"/>
-          </g>
+          <circle cx="82" cy="108" r="7.5" fill="#3A2E2A"/>
+          <circle cx="118" cy="108" r="7.5" fill="#3A2E2A"/>
+          <circle cx="84.5" cy="105" r="2.4" fill="#fff"/>
+          <circle cx="120.5" cy="105" r="2.4" fill="#fff"/>
           <path d="M96 120 q4 4 4 4 q0 0 4 -4" stroke="#3A2E2A" stroke-width="3" fill="none" stroke-linecap="round"/>
           <path d="M100 120 v4" stroke="#3A2E2A" stroke-width="3" stroke-linecap="round"/>
           <path d="M94 124 q6 6 12 0" stroke="#3A2E2A" stroke-width="3" fill="none" stroke-linecap="round"/>
           <path d="M70 128 q-16 -2 -28 4M70 134 q-16 4 -28 10M130 128 q16 -2 28 4M130 134 q16 4 28 10" stroke="#3A2E2A" stroke-width="2" fill="none" stroke-linecap="round" opacity="0.85"/>
           <path d="M60 155 Q100 178 140 155" stroke="#C9652F" stroke-width="6" fill="none" stroke-linecap="round"/>
         </svg>
+        <canvas id="mascot3d-canvas" aria-hidden="true"></canvas>
       </div>
       <div class="onboard-copy">
         <div class="dots" id="onboard-dots">
@@ -651,8 +644,10 @@
 <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd@2.2.3/dist/coco-ssd.min.js" defer></script>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
 <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin="" defer></script>
-<!-- Three.js untuk 3D visual (mascot, kartu tilt, shelter viewer) -->
+<!-- Three.js untuk 3D visual (mascot Si Oren di onboarding) -->
 <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js" defer></script>
+<script src="mascot3d.js" defer></script>
+<script src="app.js" defer></script>
 
 <!-- E2 addendum: stage untuk reveal ceremony "upacara buka kartu" -->
 <div class="reveal-stage" id="reveal-stage" aria-hidden="true">
@@ -663,6 +658,5 @@
   <div class="skip-hint">tap di mana saja untuk skip</div>
 </div>
 
-<script src="app.js" defer></script>
 </body>
 </html>
