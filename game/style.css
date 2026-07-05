@@ -264,12 +264,16 @@ main{flex:1;display:flex;flex-direction:column;position:relative;overflow:hidden
   touch-action:none;cursor:grab;
 }
 #mascot3d-canvas:active{cursor:grabbing;}
+#mascot-sprite{
+  touch-action:none;cursor:grab;user-select:none;-webkit-user-drag:none;
+  transition:transform 0.05s ease-out;
+}
 .mascot-bubble{
   position:absolute;top:2px;left:50%;transform:translateX(-50%);
   background:var(--paper);border:1px solid var(--line);color:var(--charcoal);
   font-family:'Fredoka',sans-serif;font-weight:600;font-size:13px;
   padding:5px 14px;border-radius:999px;box-shadow:var(--shadow-sm);
-  opacity:0;pointer-events:none;
+  opacity:0;pointer-events:none;z-index:10;
 }
 .mascot-bubble.show{ animation:mascotBubble 1.15s ease forwards; }
 @keyframes mascotBubble{
@@ -277,6 +281,11 @@ main{flex:1;display:flex;flex-direction:column;position:relative;overflow:hidden
   15%{opacity:1;transform:translateX(-50%) translateY(-6px) scale(1);}
   75%{opacity:1;transform:translateX(-50%) translateY(-14px) scale(1);}
   100%{opacity:0;transform:translateX(-50%) translateY(-22px) scale(.9);}
+}
+.mascot-sparkle{
+  position:absolute;width:8px;height:8px;border-radius:999px;
+  background:#D4AF37;pointer-events:none;z-index:10;opacity:1;
+  transition:transform 0.9s ease-out,opacity 0.9s ease-out;
 }
 .onboard-copy{display:flex;flex-direction:column;gap:6px;}
 .onboard-copy h3{font-size:22px;}
