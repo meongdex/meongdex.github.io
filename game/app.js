@@ -491,6 +491,8 @@ function el(tag, props={}, children=[]){
    --------------------------------------------------------------------- */
 const screenOrder = ['onboarding','home','perm-loc','feed','perm-cam','verify','card','dex','journal','map','shelter','stats','settings'];
 let currentScreen = 'onboarding';
+let state_homeVisited = false; // flag: sudah pernah visit Beranda di sesi ini
+let state_prevAchDoneCount = -1; // flag: jumlah achievement done render sebelumnya
 
 // urutan screen untuk menentukan arah transisi (back vs forward)
 const navOrder = ['home','dex','find','journal','map','shelter','stats','settings'];
@@ -614,10 +616,19 @@ function renderHome(){
     streakBox.classList.remove('streak-up');
     void streakBox.offsetWidth; // reflow
     streakBox.classList.add('streak-up');
+    // Mascot cheer saat streak naik
+    if(window.SiOrenMascot){
+      window.SiOrenMascot.showPoseAt('home-mascot-hint', 'cheer', {holdMs: 2000, thenReturnTo: 'think'});
+    }
   }
   $('#stat-xp').textContent = player.xp;
   const d = new Date();
   $('#home-date').textContent = d.toLocaleDateString('id-ID',{weekday:'long',day:'numeric',month:'long'});
+  // Mascot hint di Beranda: pose think kalau kunjungan pertama atau koleksi kosong
+  if((!state_homeVisited || cats.length === 0) && window.SiOrenMascot){
+    window.SiOrenMascot.showPoseAt('home-mascot-hint', 'think', {holdMs: 4000});
+  }
+  state_homeVisited = true;
   // misi
   const resetMission = player.missionDate !== todayKey();
   if(resetMission){ player.missionCount=0; player.missionDone=false; player.missionDate=todayKey(); Store.save(player); }
@@ -1262,6 +1273,10 @@ function renderVerifyResult(cats, allPreds, errored=false){
     msg.textContent = 'Tidak bisa memverifikasi foto otomatis. Kamu yakin ini kucing?';
     btnText.textContent = 'Ya, ini kucing';
     if(honorWrap) honorWrap.classList.add('hide');
+    // Mascot think saat verifikasi error
+    if(window.SiOrenMascot){
+      window.SiOrenMascot.showPoseAt('verify-mascot', 'think', {holdMs: 3000});
+    }
     return;
   }
   if(cats && cats.length>0){
@@ -2631,6 +2646,8 @@ async function renderStats(){
   // achievements
   const ach = $('#stats-achievements'); ach.innerHTML='';
   const done = player.completedChallenges || [];
+  // Bandingkan status achievement sebelum vs sesudah untuk deteksi milestone baru
+  const prevDoneCount = (typeof state_prevAchDoneCount !== 'undefined') ? state_prevAchDoneCount : -1;
   const achievements = [
     { label:'Pemburu pertama', desc:'Temukan kucing pertama', done:cats.length>=1, icon:'<path d="M12 21s-7-4.9-9.5-9C.7 8.8 2 5 5.5 5c2 0 3.3 1.3 4 2.3.7-1 2-2.3 4-2.3 3.5 0 4.8 3.8 3 7-2.5 4.1-9.5 9-9.5 9z"/>' },
     { label:'Kolektor', desc:'Koleksi 5 kucing', done:cats.length>=5, icon:'<rect x="3" y="4" width="18" height="16" rx="3"/><path d="M3 9h18"/>' },
@@ -2664,6 +2681,15 @@ async function renderStats(){
       </div>`;
     ach.appendChild(item);
   });
+  // Deteksi achievement baru: bandingkan jumlah done sebelum vs sesudah
+  const newDoneCount = achievements.filter(a=>a.done).length;
+  if(prevDoneCount >= 0 && newDoneCount > prevDoneCount){
+    // Achievement baru terbuka -- mascot gift
+    if(window.SiOrenMascot){
+      window.SiOrenMascot.showPoseAt('home-mascot-hint', 'gift', {holdMs: 2500});
+    }
+  }
+  state_prevAchDoneCount = newDoneCount;
 }
 
 /* ---------------------------------------------------------------------
@@ -3940,6 +3966,10 @@ function playRevealCeremony(cat, onRevealed){
     revealed = true;
     silhouette.style.display = 'none';
     card.classList.add('flipped');
+    // Mascot celebrate saat reveal
+    if(window.SiOrenMascot){
+      window.SiOrenMascot.showPoseAt('reveal-mascot', 'celebrate', {holdMs: 2200});
+    }
     // attach tilt ke reveal-card supaya langsung interaktif setelah flip
     setTimeout(()=> attachCardTilt(card), 400);
     // trigger confetti + haptic + chime di momen flip

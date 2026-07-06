@@ -1,0 +1,71 @@
+{
+  "canvas": 512,
+  "cols": 4,
+  "rows": 2,
+  "frames": [
+    {
+      "key": "curious",
+      "file": "si-oren-curious.png",
+      "x": 0,
+      "y": 0,
+      "w": 512,
+      "h": 512
+    },
+    {
+      "key": "excited",
+      "file": "si-oren-excited.png",
+      "x": 512,
+      "y": 0,
+      "w": 512,
+      "h": 512
+    },
+    {
+      "key": "blink",
+      "file": "si-oren-blink.png",
+      "x": 1024,
+      "y": 0,
+      "w": 512,
+      "h": 512
+    },
+    {
+      "key": "idle",
+      "file": "si-oren-idle.png",
+      "x": 1536,
+      "y": 0,
+      "w": 512,
+      "h": 512
+    },
+    {
+      "key": "tailwag",
+      "file": "si-oren-tailwag.png",
+      "x": 0,
+      "y": 512,
+      "w": 512,
+      "h": 512
+    },
+    {
+      "key": "eartwitch",
+      "file": "si-oren-eartwitch.png",
+      "x": 512,
+      "y": 512,
+      "w": 512,
+      "h": 512
+    },
+    {
+      "key": "sleepy",
+      "file": "si-oren-sleepy.png",
+      "x": 1024,
+      "y": 512,
+      "w": 512,
+      "h": 512
+    },
+    {
+      "key": "happy",
+      "file": "si-oren-happy.png",
+      "x": 1536,
+      "y": 512,
+      "w": 512,
+      "h": 512
+    }
+  ]
+}
