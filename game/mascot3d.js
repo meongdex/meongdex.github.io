@@ -115,8 +115,9 @@
     imgEl.alt = 'Maskot Si Oren';
     imgEl.draggable = false;
     imgEl.src = FRAMES.idle;
-    imgEl.style.cssText = 'display:none;width:220px;height:220px;object-fit:contain;' +
-      'touch-action:none;cursor:grab;user-select:none;-webkit-user-drag:none;';
+    imgEl.style.cssText = 'display:none;width:240px;height:240px;object-fit:contain;' +
+      'touch-action:none;cursor:grab;user-select:none;-webkit-user-drag:none;' +
+      'filter:drop-shadow(0 8px 16px rgba(58,46,42,0.18));';
     hostEl.appendChild(imgEl);
     return true;
   }
